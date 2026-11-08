@@ -1,0 +1,156 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #145A43;
+  --color-primary-light: #1a7a5a;
+  --color-primary-dark: #0D3B2E;
+  --color-secondary: #0D3B2E;
+  --color-accent: #E99B35;
+  --color-accent-light: #F0B560;
+  --color-accent-dark: #D08520;
+  --color-background: #F7F9F6;
+  --color-surface: #FFFFFF;
+  --color-text-primary: #202A25;
+  --color-text-secondary: #6B756F;
+  --color-success: #16A34A;
+  --color-success-light: #DCFCE7;
+  --color-warning: #D97706;
+  --color-warning-light: #FEF3C7;
+  --color-error: #B91C1C;
+  --color-error-light: #FEE2E2;
+  --color-info: #0284C7;
+  --color-info-light: #E0F2FE;
+  --color-border: #E2E8E4;
+  --color-border-light: #F0F3F1;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-text-primary font-sans antialiased;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary text-white px-5 py-2.5 rounded-lg font-medium 
+           hover:bg-primary-light active:bg-primary-dark
+           transition-colors duration-200 
+           disabled:opacity-50 disabled:cursor-not-allowed
+           focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-2;
+  }
+
+  .btn-secondary {
+    @apply bg-white text-primary border border-primary px-5 py-2.5 rounded-lg font-medium
+           hover:bg-primary/5 active:bg-primary/10
+           transition-colors duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed
+           focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-2;
+  }
+
+  .btn-accent {
+    @apply bg-accent text-white px-5 py-2.5 rounded-lg font-medium
+           hover:bg-accent-dark active:bg-accent-dark
+           transition-colors duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed
+           focus:outline-none focus:ring-2 focus:ring-accent/40 focus:ring-offset-2;
+  }
+
+  .btn-ghost {
+    @apply bg-transparent text-text-primary px-5 py-2.5 rounded-lg font-medium
+           hover:bg-gray-100 active:bg-gray-200
+           transition-colors duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed
+           focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2;
+  }
+
+  .btn-danger {
+    @apply bg-error text-white px-5 py-2.5 rounded-lg font-medium
+           hover:bg-red-800 active:bg-red-900
+           transition-colors duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed
+           focus:outline-none focus:ring-2 focus:ring-error/40 focus:ring-offset-2;
+  }
+
+  .card {
+    @apply bg-surface rounded-xl border border-border-light shadow-sm;
+  }
+
+  .card-hover {
+    @apply bg-surface rounded-xl border border-border-light shadow-sm hover:shadow-md hover:border-primary/20 transition-all duration-300;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-2.5 rounded-lg border border-border bg-white text-text-primary
+           placeholder:text-text-secondary/60
+           focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary
+           transition-colors duration-200
+           disabled:bg-gray-50 disabled:cursor-not-allowed;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-text-primary mb-1.5;
+  }
+
+  .section-title {
+    @apply text-3xl font-bold text-text-primary;
+  }
+
+  .section-subtitle {
+    @apply text-lg text-text-secondary max-w-2xl;
+  }
+
+  .page-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .sidebar-link {
+    @apply flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium
+           text-text-secondary hover:bg-primary/5 hover:text-primary
+           transition-colors duration-200;
+  }
+
+  .sidebar-link-active {
+    @apply flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium
+           bg-primary/10 text-primary;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #C4CCC7;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9CA6A0;
+}
+
