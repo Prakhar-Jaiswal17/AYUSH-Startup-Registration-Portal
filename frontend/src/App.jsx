@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext.jsx';
+import ScrollToTop from './components/common/ScrollToTop.jsx';
 
 // Layouts
 import PublicLayout from './layouts/PublicLayout.jsx';
@@ -70,7 +71,9 @@ function ProtectedRoute({ children, allowedRoles }) {
 
 export default function App() {
   return (
-    <Routes>
+    <>
+      <ScrollToTop />
+      <Routes>
       {/* Public routes */}
       <Route element={<PublicLayout />}>
         <Route path="/" element={<LandingPage />} />
@@ -138,6 +141,7 @@ export default function App() {
       {/* Catch all */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   );
 }
 

@@ -30,6 +30,7 @@ import {
   ShieldHalf,
 } from 'lucide-react';
 import { ayushDomains, mockFAQs } from '../../data/mockData';
+import PageTransition from '../../layouts/PageTransition';
 
 const domainIcons = { Leaf, Heart, FlaskConical, Atom, Droplets };
 
@@ -795,7 +796,7 @@ function CTASection() {
    ────────────────────────────────────────────────────────────────────── */
 export default function LandingPage() {
   return (
-    <div>
+    <PageTransition>
       <HeroSection />
       <StatisticsSection />
       <DomainsSection />
@@ -804,6 +805,6 @@ export default function LandingPage() {
       <GovernmentResourcesSection />
       <FAQSection />
       <CTASection />
-    </div>
+    </PageTransition>
   );
 }
