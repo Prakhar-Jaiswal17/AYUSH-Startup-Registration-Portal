@@ -43,3 +43,17 @@ docs/
 | **[`database-design.md`](./database-design.md)** | Comprehensive 3NF relational database specification. Details entity attributes, suggested PostgreSQL data types, primary and foreign keys, candidate entity rationalization, and design decisions. |
 | **[`database-workflow.md`](./database-workflow.md)** | Concrete mapping of React frontend views and context states to database operations, sequence diagrams of the review and clarification cycle, document verification state machine, and ACID transaction boundaries. |
 
+---
+
+## ⚙️ Phase 2 — Chunk 2: Relational Schema & PostgreSQL Implementation
+
+The operational PostgreSQL database implementation files reside in the root [`database/`](../database) directory:
+
+| File | Description |
+| :--- | :--- |
+| **[`database/schema.sql`](../database/schema.sql)** | Complete PostgreSQL DDL script creating all 11 tables, UUID primary keys, foreign keys with cascade/restrict rules, CHECK constraints, and 16 B-Tree performance indexes. |
+| **[`database/seed.sql`](../database/seed.sql)** | Realistic fictional seed records populating all 11 tables matching frontend demo logins (bcrypt hashed passwords), applications across diverse statuses, and sample documents. |
+| **[`database/queries.sql`](../database/queries.sql)** | Comprehensive SQL demonstration queries covering CRUD, multi-table INNER/LEFT JOINs, GROUP BY aggregations, CTEs, subqueries, ACID transactions, and Recharts analytics feeds. |
+| **[`database/README.md`](../database/README.md)** | Setup guide, execution order, demo account credentials, and PostgreSQL execution verification. |
+
+

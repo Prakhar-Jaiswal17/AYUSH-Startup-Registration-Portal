@@ -141,3 +141,13 @@ To guarantee data consistency across concurrent requests:
    - Insertion of system audit entry into `audit_logs`
    - *Failure behavior*: Rollback; no orphaned certificate number issued.
 
+---
+
+## 6. Implementation Reference (SQL Operations)
+
+The transaction and workflow queries are fully implemented and verified in [`database/queries.sql`](../database/queries.sql):
+- **Submission Workflow**: Section 6.1 (`BEGIN ... UPDATE applications ... INSERT INTO application_status_history ... COMMIT;`).
+- **Clarification Cycle**: Section 1.3 & 7.2 (`INSERT INTO clarification_queries ... UPDATE applications SET status = 'Clarification Required'`).
+- **Adjudication & Certification**: Section 6.2 (Atomic approval transaction assigning `certificate_number` and audit log).
+- **Admin Dashboard Feed**: Section 8 (Aggregated monthly registration trends and domain distributions for Recharts).
+
