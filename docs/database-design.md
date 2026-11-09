@@ -180,6 +180,7 @@ Immutable audit trail tracking every transition of an application. Powers the fr
 | :--- | :--- | :--- | :--- |
 | `id` | `UUID` | **PK**, Default `gen_random_uuid()` | Unique timeline entry ID. |
 | `application_id` | `VARCHAR(50)` | **FK** to `applications(id)`, Not Null | Target application. |
+| `previous_status`| `VARCHAR(50)` | Nullable | Status prior to transition (NULL on initial 'Draft'). |
 | `status` | `VARCHAR(50)` | Not Null | Status after transition (e.g., 'Submitted', 'Under Review'). |
 | `remark` | `TEXT` | Not Null | Explanatory note or reviewer remarks. |
 | `officer_name` | `VARCHAR(255)` | Nullable | Name of officer or system actor recording the event. |
@@ -253,4 +254,31 @@ Immutable log of system-wide administrative, security, and lifecycle actions for
    - `documents(application_id)`: Fast document listing during evaluation.
    - `notifications(user_id, is_read)`: Instant unread badge count calculation.
    - `audit_logs(created_at DESC)`: High-performance paginated audit log queries.
+
+---
+
+## 5. PostgreSQL Implementation & Verification (Phase 2, Chunk 2)
+
+The relational schema has been implemented in PostgreSQL SQL scripts located in the root `database/` directory:
+- **`database/schema.sql`**: Production DDL creating all 11 tables with explicit primary keys (`UUID` / `VARCHAR`), foreign keys with cascade rules, NOT NULL, UNIQUE, CHECK constraints, and 16 performance indexes.
+- **`database/seed.sql`**: Sample data script providing verified data across all 11 tables matching the frontend demo logins (`startup@ayushsetu.demo`, `officer@ayushsetu.demo`, `admin@ayushsetu.demo` with bcrypt password hashes).
+- **`database/queries.sql`**: Demonstrates CRUD, multi-table JOINs, GROUP BY aggregations, CTEs, subqueries, and ACID transactions.
+- **`database/README.md`**: Complete execution instructions and verification guide.
+
+### Implemented Table Structure Summary
+
+| Table | Primary Key | Foreign Keys | Key Constraints & Indexes |
+| :--- | :--- | :--- | :--- |
+| `users` | `id (UUID)` | None | `CHECK (role IN ('startup','officer','admin'))`, `UNIQUE(email)`, Index on `role` |
+| `ayush_categories` | `code (VARCHAR)` | None | `UNIQUE(name)`, `is_active DEFAULT TRUE` |
+| `document_types` | `code (VARCHAR)` | None | `CHECK (category IN (...))`, `CHECK (max_size_mb > 0)` |
+| `startups` | `id (UUID)` | `user_id` $\rightarrow$ `users(id)`<br>`ayush_domain` $\rightarrow$ `ayush_categories(code)` | `UNIQUE(user_id)`, Indexes on `user_id`, `ayush_domain` |
+| `founders` | `id (UUID)` | `startup_id` $\rightarrow$ `startups(id)` | Index on `startup_id` |
+| `applications` | `id (VARCHAR)` | `startup_id` $\rightarrow$ `startups(id)`<br>`ayush_domain` $\rightarrow$ `ayush_categories(code)`<br>`assigned_officer_id` $\rightarrow$ `users(id)` | `CHECK (status IN (...))`, `UNIQUE(certificate_number)`, Indexes on `status`, `startup_id`, `assigned_officer_id`, `ayush_domain` |
+| `documents` | `id (UUID)` | `application_id` $\rightarrow$ `applications(id)`<br>`startup_id` $\rightarrow$ `startups(id)`<br>`document_type_code` $\rightarrow$ `document_types(code)`<br>`verified_by_id` $\rightarrow$ `users(id)` | `CHECK (status IN (...))`, Indexes on `application_id`, `startup_id`, `status` |
+| `application_status_history` | `id (UUID)` | `application_id` $\rightarrow$ `applications(id)`<br>`actor_id` $\rightarrow$ `users(id)` | `CHECK (status IN (...))`, Index on `(application_id, created_at)` |
+| `clarification_queries` | `id (UUID)` | `application_id` $\rightarrow$ `applications(id)`<br>`officer_id` $\rightarrow$ `users(id)` | `CHECK (status IN ('Pending','Resolved'))`, Index on `application_id` |
+| `notifications` | `id (UUID)` | `user_id` $\rightarrow$ `users(id)`<br>`application_id` $\rightarrow$ `applications(id)` | Composite index on `(user_id, is_read)` |
+| `audit_logs` | `id (UUID)` | `actor_id` $\rightarrow$ `users(id)` | `CHECK (actor_role IN ('startup','officer','admin','system'))`, Index on `created_at DESC` |
+
 

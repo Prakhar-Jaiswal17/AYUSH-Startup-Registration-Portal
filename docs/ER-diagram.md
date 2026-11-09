@@ -143,11 +143,12 @@ erDiagram
     APPLICATION_STATUS_HISTORY {
         uuid id PK
         varchar application_id FK
+        varchar previous_status
         varchar status
         text remark
         varchar officer_name
         uuid actor_id FK
-        timestamp created_at
+        timestamptz created_at
     }
 
     CLARIFICATION_QUERY {

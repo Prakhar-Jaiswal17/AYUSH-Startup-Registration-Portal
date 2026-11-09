@@ -85,6 +85,11 @@ stateDiagram-v2
 AYUSH-Startup-Registration-Portal/
 ├── README.md
 ├── frontend/
+├── database/
+│   ├── schema.sql
+│   ├── seed.sql
+│   ├── queries.sql
+│   └── README.md
 └── docs/
     ├── README.md
     ├── requirements.md
@@ -113,11 +118,16 @@ AYUSH-Startup-Registration-Portal/
   - Relational mapping, cardinalities & 3NF normalization
   - Complete Mermaid ER diagram (`ER-diagram.md`)
   - Detailed database design & workflow specifications (`database-design.md`, `database-workflow.md`)
-- [ ] **Phase 2 — Chunk 2: Schema Implementation & Migration**
-  - Prisma schema definition (`schema.prisma`) & migrations
-  - Seed scripts for default roles and master data
+- [x] **Phase 2 — Chunk 2: Relational Schema & PostgreSQL Implementation**
+  - Complete PostgreSQL DDL schema with 11 tables, constraints, and 16 indexes (`schema.sql`)
+  - Realistic seed data matching frontend demo users and applications (`seed.sql`)
+  - Comprehensive DBMS query suite covering CRUD, JOINs, aggregations, CTEs, and transactions (`queries.sql`)
+  - Live execution and constraint enforcement verification on PostgreSQL 18+
+- [ ] **Phase 2 — Chunk 3: Prisma ORM Integration & Backend Foundation**
+  - Prisma schema definition (`schema.prisma`) matching PostgreSQL relational schema
+  - Prisma Client generation & database introspection
 - [ ] **Phase 3: Core Implementation**
-  - Authentication & session management
+  - Authentication & session management (Express REST API)
   - Multi-step application wizard & file uploads
   - Reviewer inbox, query management & adjudication
   - Certificate generation & status tracking
