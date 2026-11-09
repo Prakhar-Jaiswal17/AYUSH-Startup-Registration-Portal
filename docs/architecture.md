@@ -2,7 +2,7 @@
 
 ## 1. Architectural Overview
 
-The **AYUSH Startup Registration Portal** follows a modern, modular **Three-Tier Architecture** consisting of the **Presentation Layer**, **Application / Business Logic Layer**, and **Data & Persistence Layer**. 
+The **AYUSH Startup Registration Portal** follows a modern, modular **Three-Tier Architecture** consisting of the **Presentation Layer (React 19 / Vite Frontend)**, **Application / Business Logic Layer (Node.js / Express REST API)**, and **Data & Persistence Layer (PostgreSQL Database & Secure Object Storage)**. 
 
 The design emphasizes separation of concerns, strict type safety, end-to-end security, and relational data integrity aligned with Advanced Software Development and DBMS engineering principles.
 
@@ -71,37 +71,37 @@ flowchart TD
 ## 3. Tier-by-Tier Architectural Breakdown
 
 ### 3.1 Presentation Layer (Frontend)
-- **Framework**: Next.js (React 19/18) utilizing App Router architecture.
+- **Framework**: React 19, Vite 6, Tailwind CSS v4, and React Router v7.
 - **Responsibilities**:
-  - Rendering responsive, accessible user interfaces.
-  - Multi-step client-side form wizards with client validation via React Hook Form and Zod.
-  - Asynchronous status updates and interactive timeline visualizers.
-  - Secure document preview and file upload progress management.
+  - Rendering responsive, accessible user interfaces following government visual standards.
+  - Multi-step client-side form wizards with validation via React Hook Form and Zod schemas.
+  - Interactive status timelines, document preview drawers, and Recharts analytics dashboards.
+  - Role-based routing (`<ProtectedRoute>`) isolating Startup, Officer, and Admin paths.
 - **Sub-systems**:
-  - **Public Portal**: Information pages, AYUSH guidelines, eligibility checklists, and FAQs.
-  - **Applicant Dashboard**: Profile management, application filing, query responses, and certificate download.
-  - **Reviewer Desk**: Application inbox, document verification pane, query creation panel, and decision console.
-  - **Admin Console**: User management, reviewer account creation, audit trails, and aggregate analytics.
+  - **Public Portal**: Informational landing page, AYUSH guidelines, eligibility checklists, and FAQs.
+  - **Applicant Dashboard**: Profile management, 7-step application filing, document upload, query responses, and certificate download.
+  - **Reviewer Desk**: Application queue, document inspection pane, query generation modal, and adjudication console.
+  - **Admin Console**: Platform analytics, user/officer provisioning, master category rules, and audit log exports.
 
 ### 3.2 Business Logic & Application Layer (Backend)
-- **Framework**: Next.js Server Components, Server Actions, and Route Handlers.
-- **Key Modules**:
-  - **Authentication & RBAC Middleware**: Intercepts requests, validates JWT/session cookies, and rejects unauthorized role access before processing.
-  - **Application Lifecycle Engine**: Enforces valid state transitions (`Draft` $\rightarrow$ `Submitted` $\rightarrow$ `Under Review` $\rightarrow$ `Query Raised` / `Approved` / `Rejected`).
-  - **Document Service**: Manages upload stream validation (MIME-type detection, size boundaries) and generates secure signed URLs for document access.
-  - **Query & Communication Module**: Manages back-and-forth remarks between reviewers and applicants.
-  - **Certificate Engine**: Generates unique AYUSH Startup Registration IDs and verification tokens upon approval.
-  - **Audit Logging Service**: Records every status transition, reviewer action, and administrative operation.
+- **Framework**: Node.js & Express REST API server running on port 5000.
+- **Responsibilities & Communication**:
+  - Exposes RESTful JSON endpoints grouped into domain routers (`/api/auth`, `/api/applications`, `/api/documents`, `/api/officers`, `/api/admin`, `/api/notifications`).
+  - **Authentication & RBAC Middleware**: Verifies signed JSON Web Tokens (`Authorization: Bearer <token>`) and enforces role boundaries (`startup`, `officer`, `admin`) before controller execution.
+  - **Validation Layer**: Validates incoming request payloads with Zod before database processing.
+  - **Application Lifecycle Engine**: Enforces valid status transitions (`Draft` $\rightarrow$ `Submitted` $\rightarrow$ `Under Review` $\rightarrow$ `Clarification Required` $\rightarrow$ `Resubmitted` $\rightarrow$ `Approved` / `Rejected`).
+  - **Document Service**: Validates file MIME types and size constraints ($\le 5\text{MB}$), generates secure signed storage links, and manages verification updates.
+  - **Clarification & Query Service**: Manages bidirectional query notes between reviewers and applicants.
+  - **Audit Logging Service**: Records every status transition, review action, and administrative operation.
 
 ### 3.3 Data & Persistence Layer (Database & Storage)
-- **Relational Database**: PostgreSQL
-  - Stores all structured business entities (Users, Profiles, Applications, Queries, Review Notes, Status History, Certificates).
-  - Enforces relational constraints (foreign keys, non-null constraints, unique indexes).
-  - Handles concurrent requests using row-level locking and ACID transactions.
-- **ORM / Query Abstraction**: Prisma ORM
-  - Provides a single source of truth schema (`schema.prisma`).
-  - Generates strongly-typed TypeScript queries, preventing SQL injection vulnerabilities.
-  - Tracks schema changes via versioned migration scripts.
+- **Relational Database**: PostgreSQL (Relational DBMS)
+  - Stores all structured business entities (`users`, `startups`, `founders`, `ayush_categories`, `document_types`, `applications`, `documents`, `application_status_history`, `clarification_queries`, `notifications`, `audit_logs`).
+  - Enforces relational constraints (foreign keys with `ON DELETE CASCADE` or `ON DELETE SET NULL`, non-null checks, unique indexes).
+  - Handles concurrent requests using row-level locking, connection pooling, and strict ACID transactions.
+- **Inter-Tier Communication**:
+  - **Frontend $\longleftrightarrow$ Backend**: Asynchronous HTTP/HTTPS REST requests using Axios (`frontend/src/services/api.js`), exchanging JSON payloads. Form uploads use `multipart/form-data`.
+  - **Backend $\longleftrightarrow$ Database**: Connection-pooled SQL connections via Prisma ORM client with parameterized queries preventing SQL injection.
 - **Document / Object Storage**:
   - Encrypted file repository storing uploaded certificates, test reports, and pitch decks.
   - Avoids storing binary BLOBs inside the relational database, ensuring database performance and backup efficiency.

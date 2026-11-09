@@ -1,0 +1,45 @@
+# Project Documentation Index
+
+This directory serves as the centralized documentation repository for the **AYUSH Startup Registration Portal**, developed as part of the **Advanced Software Development (ASD)** and **Database Management Systems (DBMS)** curriculum.
+
+---
+
+## 📑 Documentation Structure
+
+```text
+docs/
+├── README.md                  # Master documentation index (this file)
+│
+├── requirements.md            # [Phase 1] Functional & Non-Functional Requirements & MVP Scope
+├── user-roles.md              # [Phase 1] Roles, RBAC Permissions Matrix & Use-Case Diagram
+├── application-workflow.md    # [Phase 1] Application Lifecycle & State Transitions
+├── tech-stack.md              # [Phase 1] Technology Stack Specification & Academic Justification
+├── architecture.md            # [Phase 1 & 2] High-Level 3-Tier System Architecture & Communication
+│
+├── ER-diagram.md              # [Phase 2] Mermaid Entity-Relationship Diagram & Cardinalities
+├── database-design.md         # [Phase 2] Relational Schema Design, Attributes, Keys & 3NF Normalization
+└── database-workflow.md       # [Phase 2] Frontend-to-Database Mapping & Transaction Boundaries
+```
+
+---
+
+## 📌 Phase 1: Requirement Analysis & Project Setup
+
+| Document | Description |
+| :--- | :--- |
+| **[`requirements.md`](./requirements.md)** | Core objectives, Ministry of AYUSH & AIIA context, functional requirements (FR-1 to FR-7), non-functional requirements (security, scalability, usability), and MVP vs. future scope. |
+| **[`user-roles.md`](./user-roles.md)** | Detailed role specifications (*Startup Applicant*, *Government Reviewer*, *Administrator*), Role-Based Access Control (RBAC) matrix, and Mermaid Use-Case diagram. |
+| **[`application-workflow.md`](./application-workflow.md)** | Complete end-to-end registration lifecycle, state transition machine (`Draft` $\rightarrow$ `Submitted` $\rightarrow$ `Under Review` $\rightarrow$ `Clarification Required` $\rightarrow$ `Resubmitted` $\rightarrow$ `Approved` / `Rejected`), and workflow flowchart. |
+| **[`tech-stack.md`](./tech-stack.md)** | Selected technologies (React 19, Vite, Tailwind CSS v4, Node.js/Express, PostgreSQL, Prisma ORM) and their academic and architectural justifications. |
+| **[`architecture.md`](./architecture.md)** | High-level 3-tier system architecture, tier-by-tier component interactions, inter-tier communication protocols, and security threat mitigations. |
+
+---
+
+## 🗄️ Phase 2 — Chunk 1: Database Analysis & ER Design
+
+| Document | Description |
+| :--- | :--- |
+| **[`ER-diagram.md`](./ER-diagram.md)** | Complete Mermaid ER diagram showing all 11 finalized database entities, primary and foreign keys, relationship cardinalities (1:1, 1:N), and optional vs. mandatory constraints. |
+| **[`database-design.md`](./database-design.md)** | Comprehensive 3NF relational database specification. Details entity attributes, suggested PostgreSQL data types, primary and foreign keys, candidate entity rationalization, and design decisions. |
+| **[`database-workflow.md`](./database-workflow.md)** | Concrete mapping of React frontend views and context states to database operations, sequence diagrams of the review and clarification cycle, document verification state machine, and ACID transaction boundaries. |
+
