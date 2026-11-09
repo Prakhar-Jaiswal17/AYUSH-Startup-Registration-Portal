@@ -18,17 +18,25 @@ The **AYUSH Startup Registration Portal** solves this by offering a centralized 
 
 ---
 
-## 📋 Project Documentation (Phase 1)
+## 📋 Project Documentation
 
-All Phase 1 requirement analysis, workflow definitions, and technical architectural specifications are detailed within the [`docs/`](./docs) directory:
+All Phase 1 and Phase 2 requirement analysis, workflows, technical architectural specifications, and database designs are maintained in the [`docs/`](./docs) directory (see [`docs/README.md`](./docs/README.md) for index):
 
+### Phase 1: Requirements & Architecture
 | Document | Description |
 | :--- | :--- |
 | **[`docs/requirements.md`](./docs/requirements.md)** | Problem statement, functional requirements (FR-1 to FR-7), non-functional requirements (security, usability, scalability, reliability), and MVP boundaries. |
 | **[`docs/user-roles.md`](./docs/user-roles.md)** | Detailed role specifications (*Startup Applicant*, *Government Reviewer*, *Administrator*), Role-Based Access Control (RBAC) matrix, and Mermaid Use-Case diagram. |
-| **[`docs/application-workflow.md`](./docs/application-workflow.md)** | Complete end-to-end registration lifecycle, state transition machine (`Draft` $\rightarrow$ `Submitted` $\rightarrow$ `Under Review` $\rightarrow$ `Query Raised` $\rightarrow$ `Resubmitted` $\rightarrow$ `Approved` / `Rejected`), and Mermaid workflow flowchart. |
-| **[`docs/tech-stack.md`](./docs/tech-stack.md)** | Selected technologies (Next.js, TypeScript, Tailwind CSS, PostgreSQL, Prisma ORM, NextAuth) and their architectural justifications. |
+| **[`docs/application-workflow.md`](./docs/application-workflow.md)** | Complete end-to-end registration lifecycle, state transition machine (`Draft` $\rightarrow$ `Submitted` $\rightarrow$ `Under Review` $\rightarrow$ `Clarification Required` $\rightarrow$ `Resubmitted` $\rightarrow$ `Approved` / `Rejected`), and workflow flowchart. |
+| **[`docs/tech-stack.md`](./docs/tech-stack.md)** | Selected technologies (React 19, Vite, Tailwind CSS v4, Node.js/Express, PostgreSQL, Prisma ORM) and their architectural justifications. |
 | **[`docs/architecture.md`](./docs/architecture.md)** | High-level 3-tier system architecture, component interactions, security model, and Mermaid architecture & sequence diagrams. |
+
+### Phase 2: Database Design (Chunk 1)
+| Document | Description |
+| :--- | :--- |
+| **[`docs/ER-diagram.md`](./docs/ER-diagram.md)** | Complete Mermaid ER diagram showing all 11 finalized database entities, keys, relationships, and cardinalities. |
+| **[`docs/database-design.md`](./docs/database-design.md)** | Relational schema design, entity attributes, suggested PostgreSQL data types, 3NF normalization, and design decisions. |
+| **[`docs/database-workflow.md`](./docs/database-workflow.md)** | Mapping frontend views and Context state to database entities, data flows, and ACID transaction boundaries. |
 
 ---
 
@@ -63,10 +71,9 @@ stateDiagram-v2
 
 ## 💻 Technology Stack
 
-* **Frontend**: Next.js (App Router, React 19/18), Tailwind CSS, Shadcn UI / Radix primitives, Lucide Icons
-* **Backend**: Next.js API Routes & Server Actions, Zod (runtime schema validation)
+* **Frontend**: React 19, Vite 6, Tailwind CSS v4, React Router v7, Framer Motion v14, Recharts v3, Lucide Icons
+* **Backend**: Node.js & Express REST API, Zod (schema validation), JWT & bcrypt authentication
 * **Database & ORM**: PostgreSQL (ACID-compliant relational DBMS), Prisma ORM (type-safe queries & migrations)
-* **Authentication & Security**: NextAuth.js / JWT, bcrypt password hashing, Role-Based Access Control (RBAC)
 * **Document Storage**: Secure local/cloud storage with signed access URLs
 * **Documentation & Diagrams**: Markdown with native GitHub-rendered Mermaid.js diagrams
 
@@ -77,12 +84,17 @@ stateDiagram-v2
 ```text
 AYUSH-Startup-Registration-Portal/
 ├── README.md
+├── frontend/
 └── docs/
+    ├── README.md
     ├── requirements.md
     ├── user-roles.md
     ├── application-workflow.md
     ├── tech-stack.md
-    └── architecture.md
+    ├── architecture.md
+    ├── ER-diagram.md
+    ├── database-design.md
+    └── database-workflow.md
 ```
 
 ---
@@ -95,8 +107,13 @@ AYUSH-Startup-Registration-Portal/
   - Application lifecycle & query resolution workflow
   - Technology stack selection & architectural modeling
   - Visual Mermaid use-case, workflow, and architecture diagrams
-- [ ] **Phase 2: Database Design & Backend Modeling**
-  - Relational schema design (ER modeling & 3NF normalization)
+- [x] **Phase 2 — Chunk 1: Database Analysis & ER Design**
+  - Finalized preliminary entity list & rationalization
+  - Entity attributes, data types, PK/FK definitions
+  - Relational mapping, cardinalities & 3NF normalization
+  - Complete Mermaid ER diagram (`ER-diagram.md`)
+  - Detailed database design & workflow specifications (`database-design.md`, `database-workflow.md`)
+- [ ] **Phase 2 — Chunk 2: Schema Implementation & Migration**
   - Prisma schema definition (`schema.prisma`) & migrations
   - Seed scripts for default roles and master data
 - [ ] **Phase 3: Core Implementation**
