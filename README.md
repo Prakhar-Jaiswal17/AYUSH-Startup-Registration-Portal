@@ -29,6 +29,8 @@ All Phase 1 and Phase 2 requirement analysis, workflows, technical architectural
 | **[`docs/user-roles.md`](./docs/user-roles.md)** | Detailed role specifications (*Startup Applicant*, *Government Reviewer*, *Administrator*), Role-Based Access Control (RBAC) matrix, and Mermaid Use-Case diagram. |
 | **[`docs/application-workflow.md`](./docs/application-workflow.md)** | Complete end-to-end registration lifecycle, state transition machine (`Draft` $\rightarrow$ `Submitted` $\rightarrow$ `Under Review` $\rightarrow$ `Clarification Required` $\rightarrow$ `Resubmitted` $\rightarrow$ `Approved` / `Rejected`), and workflow flowchart. |
 | **[`docs/tech-stack.md`](./docs/tech-stack.md)** | Selected technologies (React 19, Vite, Tailwind CSS v4, Node.js/Express, PostgreSQL, Prisma ORM) and their architectural justifications. |
+| **[`docs/application-workflow.md`](./docs/application-workflow.md)** | Complete end-to-end registration lifecycle, state transition machine (`Draft` $\rightarrow$ `Submitted` $\rightarrow$ `Under Review` $\rightarrow$ `Query Raised` $\rightarrow$ `Resubmitted` $\rightarrow$ `Approved` / `Rejected`), and Mermaid workflow flowchart. |
+| **[`docs/tech-stack.md`](./docs/tech-stack.md)** | Project stack: Vite, React, JavaScript, Express, PostgreSQL, and Prisma. |
 | **[`docs/architecture.md`](./docs/architecture.md)** | High-level 3-tier system architecture, component interactions, security model, and Mermaid architecture & sequence diagrams. |
 
 ### Phase 2: Database Design (Chunk 1)
@@ -74,6 +76,10 @@ stateDiagram-v2
 * **Frontend**: React 19, Vite 6, Tailwind CSS v4, React Router v7, Framer Motion v14, Recharts v3, Lucide Icons
 * **Backend**: Node.js & Express REST API, Zod (schema validation), JWT & bcrypt authentication
 * **Database & ORM**: PostgreSQL (ACID-compliant relational DBMS), Prisma ORM (type-safe queries & migrations)
+* **Frontend**: Vite, React, JavaScript, Tailwind CSS, Lucide Icons
+* **Backend**: Node.js, Express, JavaScript (CommonJS), REST API
+* **Database & ORM**: PostgreSQL and Prisma ORM
+* **Authentication & Security**: To be implemented; server-side role checks and password hashing are required
 * **Document Storage**: Secure local/cloud storage with signed access URLs
 * **Documentation & Diagrams**: Markdown with native GitHub-rendered Mermaid.js diagrams
 
@@ -83,6 +89,8 @@ stateDiagram-v2
 
 ```text
 AYUSH-Startup-Registration-Portal/
+├── frontend/
+├── backend/
 ├── README.md
 ├── frontend/
 ├── database/
@@ -134,4 +142,3 @@ AYUSH-Startup-Registration-Portal/
 - [ ] **Phase 4: Testing, Auditing & Deployment**
   - Unit, integration, and security testing
   - Final demonstration & deployment
-

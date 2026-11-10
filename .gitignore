@@ -34,3 +34,7 @@ pnpm-debug.log*
 
 # Project specific
 ai-context.md
+.env
+.env.*
+!.env.example
+backend/src/generated/prisma

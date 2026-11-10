@@ -129,6 +129,6 @@ To deliver a reliable and maintainable system within the timeline of the Advance
 
 ### NFR-5: Maintainability & Extensibility
 - **Clean Architecture**: Clear separation between UI components, business logic services, and database data-access layers.
-- **Type Safety**: End-to-end static type safety using TypeScript across frontend, backend, and database schema definitions.
+- **Maintainable JavaScript**: Use JavaScript consistently in the frontend and backend, with server-side validation and Prisma for database access.
 - **Self-Documenting Code**: Standardized naming conventions, explicit schema validations, and modular folder structure.
 
