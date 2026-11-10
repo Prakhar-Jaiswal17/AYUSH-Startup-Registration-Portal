@@ -3,9 +3,10 @@ import { mockApplications, mockDocuments } from '../data/mockData';
 import { useAuth } from './AuthContext';
 
 const ApplicationContext = createContext(null);
-
+//************ */
 const APPS_STORAGE_KEY = 'ayush_setu_applications';
 const DOCS_STORAGE_KEY = 'ayush_setu_documents';
+//************ */
 
 const getInitialApplications = () => {
   try {
