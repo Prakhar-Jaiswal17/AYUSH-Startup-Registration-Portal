@@ -18,7 +18,9 @@ docs/
 │
 ├── ER-diagram.md              # [Phase 2] Mermaid Entity-Relationship Diagram & Cardinalities
 ├── database-design.md         # [Phase 2] Relational Schema Design, Attributes, Keys & 3NF Normalization
-└── database-workflow.md       # [Phase 2] Frontend-to-Database Mapping & Transaction Boundaries
+├── database-workflow.md       # [Phase 2] Frontend-to-Database Mapping & Transaction Boundaries
+│
+└── api-contract.md            # [Phase 2 Chunk 3] Agreed HTTP API Contract for frontend-backend integration
 ```
 
 ---
@@ -55,5 +57,13 @@ The operational PostgreSQL database implementation files reside in the root [`da
 | **[`database/seed.sql`](../database/seed.sql)** | Realistic fictional seed records populating all 11 tables matching frontend demo logins (bcrypt hashed passwords), applications across diverse statuses, and sample documents. |
 | **[`database/queries.sql`](../database/queries.sql)** | Comprehensive SQL demonstration queries covering CRUD, multi-table INNER/LEFT JOINs, GROUP BY aggregations, CTEs, subqueries, ACID transactions, and Recharts analytics feeds. |
 | **[`database/README.md`](../database/README.md)** | Setup guide, execution order, demo account credentials, and PostgreSQL execution verification. |
+
+---
+
+## 🔌 Phase 2 — Chunk 3: API Contract
+
+| Document | Description |
+| :--- | :--- |
+| **[`api-contract.md`](./api-contract.md)** | Agreed HTTP API contract for frontend-backend integration. Defines base URL, JWT auth, shared enums (Role, ApplicationStatus), Prisma model names and key fields, route ownership table, all endpoint request/response shapes, error codes, frontend status label mapping, file upload spec, and team constraints. Must be agreed before parallel backend/frontend integration work begins. |
 
 
