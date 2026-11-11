@@ -1,7 +1,15 @@
 import { motion } from 'framer-motion';
 import { CheckCircle, Clock, XCircle, AlertCircle, Circle } from 'lucide-react';
+import { getCanonicalStatus, getStatusLabel } from '../../utils/statusHelpers';
 
 const statusConfig = {
+  DRAFT: { icon: Clock, color: 'text-gray-500', bg: 'bg-gray-500', ring: 'ring-gray-100' },
+  SUBMITTED: { icon: Circle, color: 'text-[#145A43]', bg: 'bg-[#145A43]', ring: 'ring-[#145A43]/10' },
+  UNDER_REVIEW: { icon: Clock, color: 'text-blue-500', bg: 'bg-blue-500', ring: 'ring-blue-100' },
+  QUERY_RAISED: { icon: AlertCircle, color: 'text-orange-500', bg: 'bg-orange-500', ring: 'ring-orange-100' },
+  RESUBMITTED: { icon: Clock, color: 'text-indigo-500', bg: 'bg-indigo-500', ring: 'ring-indigo-100' },
+  APPROVED: { icon: CheckCircle, color: 'text-emerald-500', bg: 'bg-emerald-500', ring: 'ring-emerald-100' },
+  REJECTED: { icon: XCircle, color: 'text-red-500', bg: 'bg-red-500', ring: 'ring-red-100' },
   Approved: { icon: CheckCircle, color: 'text-emerald-500', bg: 'bg-emerald-500', ring: 'ring-emerald-100' },
   Completed: { icon: CheckCircle, color: 'text-emerald-500', bg: 'bg-emerald-500', ring: 'ring-emerald-100' },
   Pending: { icon: Clock, color: 'text-amber-500', bg: 'bg-amber-500', ring: 'ring-amber-100' },
@@ -13,8 +21,9 @@ const statusConfig = {
 };
 
 function getConfig(status) {
+  const canonicalStatus = getCanonicalStatus(status);
   return (
-    statusConfig[status] || {
+    statusConfig[canonicalStatus] || statusConfig[status] || {
       icon: Circle,
       color: 'text-[#6B756F]',
       bg: 'bg-[#6B756F]',
@@ -51,6 +60,8 @@ export default function Timeline({ events = [] }) {
     >
       {events.map((event, idx) => {
         const config = getConfig(event.status);
+        const canonicalStatus = getCanonicalStatus(event.status);
+        const statusLabel = canonicalStatus ? getStatusLabel(canonicalStatus) : event.status;
         const Icon = config.icon;
         const isLast = idx === events.length - 1;
 
@@ -76,7 +87,7 @@ export default function Timeline({ events = [] }) {
             <div className="flex-1 pt-0.5">
               <div className="flex flex-wrap items-center gap-2">
                 <span className={`text-sm font-semibold ${config.color}`}>
-                  {event.status}
+                  {statusLabel}
                 </span>
                 {event.date && (
                   <span className="text-xs text-[#6B756F]">{event.date}</span>

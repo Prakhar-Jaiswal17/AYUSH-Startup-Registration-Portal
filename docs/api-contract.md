@@ -1,7 +1,7 @@
 # API Contract — AYUSH Startup Registration Portal
 
 > **Document version:** 1.0  
-> **Phase:** Phase 2 — Chunk 3 (Backend Foundation)  
+> **Phase:** Phase 2 — Chunk 3 (Agreed target contract)
 > **Status:** Agreed — do not change shared sections without team consensus
 
 This contract is the single source of truth for all HTTP API communication between the React frontend and the Express backend. Both Prakhar (backend) and the teammate (frontend integration + officer/review routes) must follow this document exactly.
@@ -40,7 +40,7 @@ This contract is the single source of truth for all HTTP API communication betwe
 | Local development | `http://localhost:3005/api` |
 | Frontend env variable | `VITE_API_URL=http://localhost:3005/api` |
 
-> **Fix required (teammate):** `frontend/src/services/api.js` currently defaults to `http://localhost:5000/api`. Change the fallback to `http://localhost:3005/api`. Then set `VITE_API_URL=http://localhost:3005/api` in `frontend/.env`.
+> **Current frontend status (11 November 2026):** `frontend/src/services/api.js` now uses `VITE_API_URL` with the documented `http://localhost:3005/api` fallback, and `frontend/.env.example` contains the same value. No local `.env` file is required or committed.
 
 Backend env variables required in `backend/.env`:
 
@@ -59,7 +59,7 @@ CLIENT_URL=http://localhost:5173
 **Method:** JWT Bearer Token
 
 - After login, the backend returns a `token` string.
-- The frontend stores it in `localStorage` under the key `ayush_setu_token` (already implemented in `api.js`).
+- The API client reads it from `localStorage` under `ayush_setu_token` and attaches it to requests. The current `AuthContext` remains mock-backed and does not yet store a backend token.
 - Every protected request must include the header:
 
 ```
@@ -223,7 +223,7 @@ Prakhar defines the Prisma schema. These are the agreed model names and critical
 | `createdAt` | `DateTime` | |
 | `updatedAt` | `DateTime` | |
 
-> **Tracking number generation** is the backend's responsibility. Frontend must NOT generate tracking numbers locally (remove the existing `generateAppId()` from `NewApplication.jsx`).
+> **Tracking number generation** is the backend's responsibility. The frontend must display the returned `trackingNumber` and must not generate one locally. The obsolete client generator has been removed; the current demo uses an internal mock record ID only.
 
 ### `Founder`
 | Field | Type | Notes |
@@ -1131,7 +1131,7 @@ Returns the list of AYUSH categories (Ayurveda, Yoga & Naturopathy, Unani, Siddh
 
 ## 18. Frontend Status Label Mapping
 
-The frontend must map canonical backend values to display labels. Use this table in `src/utils/statusHelpers.js` or equivalent:
+The frontend must map canonical backend values to display labels. The current implementation is `frontend/src/utils/statusHelpers.js`; it also handles existing mock display labels and unknown values safely:
 
 ```js
 export const STATUS_LABELS = {
@@ -1155,7 +1155,7 @@ export const STATUS_COLORS = {
 };
 ```
 
-> Never hardcode status strings like `'Under Review'` or `'Draft'` in component logic. Always derive from the canonical enum value using the mapping above.
+> For API data, never hardcode display labels such as `'Under Review'` or `'Draft'` in application logic; derive them from the canonical enum. Some mock-backed screens and contexts still use display-label values and must be normalized during live integration.
 
 ---
 
@@ -1193,13 +1193,14 @@ export const STATUS_COLORS = {
 - JWT: sign with `JWT_SECRET` from env, include `{ id, email, role }` in payload.
 - All DB timestamps: PostgreSQL `TIMESTAMPTZ`, Prisma `DateTime`.
 
-### Frontend constraints
+### Frontend implementation status
 
-- Fix `frontend/src/services/api.js` fallback URL to `http://localhost:3005/api`.
-- Remove `generateAppId()` from `NewApplication.jsx` — use server-returned `trackingNumber`.
-- Remove `alert()` calls in `NewApplication.jsx` — replace with toast/notification UI.
-- Do NOT hardcode mock user IDs or application IDs anywhere after integration.
-- Context files (`AuthContext`, `ApplicationContext`, `NotificationContext`) must switch from mock data to real API calls during integration phase.
+- The API client wrappers are prepared against the endpoint shapes in this document, but no screen or context currently calls them.
+- The client-side `generateAppId()` helper was removed. The local demo uses an internal `mock-…` record ID and leaves `trackingNumber` empty; only the backend may generate the contract tracking number.
+- Native `alert()` feedback was removed from `NewApplication.jsx` and replaced with inline feedback. Other prototype pages may still contain placeholder alerts.
+- `AuthContext`, `ApplicationContext`, and `NotificationContext` remain mock-backed until the backend endpoints are implemented.
+- The seven-step form keeps its complete data in the local demo record. The current request example does not define all collected form fields, and the form's mock category slug is not the UUID `categoryId` required here. Resolve this gap with the team before sending a live create request; do not extend the agreed shape unilaterally.
+- See [implementation-status.md](./implementation-status.md) for backend readiness and SQL/Prisma alignment gaps.
 
 ### Schema change protocol
 
@@ -1213,5 +1214,5 @@ If either developer identifies a required schema change after this contract is a
 
 ---
 
-*Last updated: Phase 2 — Chunk 3 planning. Agreed by team before parallel development begins.*
+*Contract shapes last agreed during Phase 2 — Chunk 3. Frontend implementation status reviewed 11 November 2026; no shared endpoint or model shape was changed in this review.*
 

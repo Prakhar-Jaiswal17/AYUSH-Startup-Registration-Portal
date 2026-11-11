@@ -1,5 +1,7 @@
 # User Roles, Permissions, and Use Case Analysis
 
+This document describes target roles and permissions. The current portal screens are a frontend prototype; authentication and authorization are not enforced by backend APIs yet. See [implementation-status.md](./implementation-status.md).
+
 ## 1. Overview of Stakeholders
 
 The **AYUSH Startup Registration Portal** serves three primary user personas, each with distinct business needs, responsibilities, and operational access levels:
@@ -15,7 +17,7 @@ The **AYUSH Startup Registration Portal** serves three primary user personas, ea
 ### 2.1 Startup Applicant
 
 #### Role Description
-The primary external consumer of the portal. The applicant is responsible for registering the venture, providing corporate and scientific data, uploading compliance documents, addressing queries raised by officials, and tracking the application through to certification.
+The primary external consumer of the portal. The applicant is responsible for registering the venture, providing corporate and scientific data, uploading compliance documents, addressing queries raised by officials, and tracking the application to a portal-recorded outcome.
 
 #### Key Functionalities & Permissions:
 - **Account Management**: Register a personal/organizational account, authenticate via email/password, manage contact profile, and reset password.
@@ -23,7 +25,7 @@ The primary external consumer of the portal. The applicant is responsible for re
 - **AYUSH Domain Categorization**: Specify primary and secondary AYUSH streams (Ayurveda, Yoga & Naturopathy, Unani, Siddha, Homoeopathy).
 - **Document Management**: Upload, preview, update, and replace mandatory compliance files (incorporation certificate, licenses, test reports, pitch deck).
 - **Query Resolution**: View comments and queries raised by reviewers, draft explanatory notes, and upload supplementary documents to resubmit.
-- **Tracking & Certification**: Monitor real-time status progression (`Submitted` $\rightarrow$ `Under Review` $\rightarrow$ `Approved` / `Rejected`) and download the verified AYUSH Startup Certificate upon approval.
+- **Tracking & Outcome**: Monitor application status progression and view the final portal review outcome. Any portal acknowledgement is an internal administrative record, not a statutory AYUSH license or regulatory approval.
 
 #### Operational Restrictions:
 - Cannot access or review applications submitted by other startups.
@@ -91,8 +93,8 @@ The following matrix details the permissions granted to each role across key sys
 | **Queries** | Raise Review Query | Denied | Allowed | Denied |
 | | View Raised Query | Allowed (Own) | Allowed (All/Assigned) | Allowed (All) |
 | | Respond to Query | Allowed (Own) | Denied | Denied |
-| **Certificates** | Generate Certificate | Automated | Automated | Automated / View |
-| | Download Certificate | Allowed (Own) | Allowed | Allowed |
+| **Portal Acknowledgement** | Generate internal acknowledgement (if included in scope) | Automated | Automated | Automated / View |
+| | View/download acknowledgement | Allowed (Own) | Allowed | Allowed |
 | **Audit Logs & Metrics** | View Audit Trail | Allowed (Status Timeline) | Allowed (Application) | Allowed (Full System) |
 | | View Analytical Dashboards | Denied | Denied (Limited Queue) | Allowed (Complete) |
 
@@ -118,7 +120,7 @@ flowchart LR
         UC5["Submit Application"]
         UC6["Track Application Status"]
         UC7["Respond to Queries & Resubmit"]
-        UC8["Download AYUSH Certificate"]
+        UC8["View Portal Outcome / Acknowledgement"]
 
         UC9["View Application Queue"]
         UC10["Inspect Details & Verify Documents"]

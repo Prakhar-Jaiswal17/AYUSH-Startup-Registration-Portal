@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-This document presents the complete **Entity-Relationship (ER) Diagram** for the **AYUSH Startup Registration Portal**. The data model is derived from the functional requirements and the actual frontend implementation (`frontend/src/pages/`, `frontend/src/context/`, and `frontend/src/data/mockData.js`).
+This document presents the target **Entity-Relationship (ER) model** for the **AYUSH Startup Registration Portal**. It is a design reference, not the current Prisma schema; `backend/prisma/schema.prisma` has no models yet. See [implementation-status.md](./implementation-status.md) for current state and model differences.
 
 The database is designed to run on **PostgreSQL**, adhering to Third Normal Form (3NF), ensuring referential integrity, eliminating data anomalies, and supporting multi-role application tracking, document verification, clarification cycles, and audit logging.
 
@@ -116,8 +116,8 @@ erDiagram
         uuid assigned_officer_id FK
         jsonb regulatory_details
         jsonb business_details_snapshot
-        varchar certificate_number UK
-        timestamp certificate_issued_at
+        varchar certificate_number UK "legacy internal portal reference only"
+        timestamp certificate_issued_at "legacy internal portal record time"
         timestamp submitted_at
         timestamp last_updated
         timestamp created_at
@@ -265,7 +265,7 @@ erDiagram
 ## 4. Key Diagram Observations & Design Rationale
 
 1. **Separation of Startup Profile from Specific Applications**:
-   - Company details (CIN, brand, incorporation date) are stored in `STARTUP`, whereas dynamic review data (submission date, status, assigned reviewer, certificate) are stored in `APPLICATION`. This allows startups to submit multiple applications over time without duplicate company profiles.
+   - Company details (CIN, brand, incorporation date) are stored in `STARTUP`, whereas dynamic review data (submission date, status, assigned reviewer, and any agreed internal portal reference) are stored in `APPLICATION`. A portal reference must not imply statutory licensing or regulatory approval.
 2. **Immutable Status History vs. Current Status**:
    - `APPLICATION.status` provides $O(1)$ fast lookups for reviewer queues and filtering.
    - `APPLICATION_STATUS_HISTORY` preserves an append-only timeline of every transition, matching the frontend's timeline view.

@@ -6,7 +6,6 @@ import { useAuth } from '../../context/AuthContext';
 import { useApplications } from '../../context/ApplicationContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { ayushDomains, indianStates, incorporationTypes, businessActivities, businessStages, documentCategories } from '../../data/mockData';
-import { generateAppId } from '../../utils/helpers';
 import Modal from '../../components/common/Modal';
 import PageTransition from '../../layouts/PageTransition';
 
@@ -29,15 +28,17 @@ const initialFormData = {
 export default function NewApplication() {
   const navigate = useNavigate();
   const { user, startup } = useAuth();
-  const { createApplication, submitApplication } = useApplications();
+  const { createApplication } = useApplications();
   const { addNotification } = useNotifications();
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState(initialFormData);
   const [errors, setErrors] = useState({});
   const [direction, setDirection] = useState(0);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [submittedAppId, setSubmittedAppId] = useState('');
+  const [createdApplicationId, setCreatedApplicationId] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [saveFeedback, setSaveFeedback] = useState('');
+  const [submissionError, setSubmissionError] = useState('');
 
   useEffect(() => {
     try {
@@ -48,12 +49,20 @@ export default function NewApplication() {
 
   const updateField = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    setSaveFeedback('');
+    setSubmissionError('');
     if (errors[field]) setErrors(prev => { const n = { ...prev }; delete n[field]; return n; });
   };
 
   const saveDraft = () => {
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(formData));
-    alert('Draft saved successfully!');
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(formData));
+      setSubmissionError('');
+      setSaveFeedback('Draft saved in this browser.');
+    } catch {
+      setSaveFeedback('');
+      setSubmissionError('Unable to save this draft in browser storage. Please try again.');
+    }
   };
 
   const validateStep = (step) => {
@@ -96,18 +105,44 @@ export default function NewApplication() {
   const goPrev = () => { setDirection(-1); setCurrentStep(s => Math.max(s - 1, 0)); };
   const goToStep = (step) => { setDirection(step > currentStep ? 1 : -1); setCurrentStep(step); };
 
-  const handleSubmit = () => {
-    if (!formData.declaration) return;
+  const handleSubmit = async () => {
+    if (!formData.declaration || submitting) return;
     setSubmitting(true);
-    setTimeout(() => {
-      const appId = generateAppId();
-      createApplication({ startupId: startup?.id || `stp_${Date.now()}`, startupName: formData.legalName, brandName: formData.brandName, ayushDomain: formData.ayushDomain, state: formData.state });
-      addNotification({ type: 'status_update', title: 'Application Submitted', message: `Your application ${appId} has been submitted successfully and will be reviewed.`, applicationId: appId });
-      localStorage.removeItem(DRAFT_KEY);
-      setSubmittedAppId(appId);
-      setSubmitting(false);
+    setSubmissionError('');
+    setSaveFeedback('');
+
+    try {
+      // Keep the local demo flow available until the application API is implemented.
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const application = createApplication({
+        startupId: startup?.id || `stp_${Date.now()}`,
+        startupName: formData.legalName,
+        brandName: formData.brandName,
+        ayushDomain: formData.ayushDomain,
+        state: formData.state,
+        status: 'Submitted',
+        formData: { ...formData },
+      });
+
+      addNotification({
+        type: 'status_update',
+        title: 'Application Submitted',
+        message: 'Your application was submitted in the local demo. A tracking number will be assigned by the server when live submission is available.',
+        applicationId: application.id,
+      });
+
+      try {
+        localStorage.removeItem(DRAFT_KEY);
+      } catch {
+        // The application record is already saved in the mock context.
+      }
+      setCreatedApplicationId(application.id);
       setShowSuccess(true);
-    }, 1200);
+    } catch (error) {
+      setSubmissionError(error?.message || 'Unable to submit the application. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const addCoFounder = () => {
@@ -162,6 +197,17 @@ export default function NewApplication() {
           <h1 className="text-2xl font-bold text-text-primary">New Application</h1>
           <p className="text-text-secondary text-sm mt-1">Complete the registration wizard to submit your application.</p>
         </div>
+
+        {saveFeedback && (
+          <p role="status" className="rounded-lg border border-success/20 bg-success/5 px-4 py-3 text-sm text-success">
+            {saveFeedback}
+          </p>
+        )}
+        {submissionError && (
+          <p role="alert" className="rounded-lg border border-error/20 bg-error/5 px-4 py-3 text-sm text-error">
+            {submissionError}
+          </p>
+        )}
 
         {/* Progress Bar */}
         <div className="card p-4">
@@ -424,13 +470,12 @@ export default function NewApplication() {
             <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 200 }}>
               <CheckCircle className="w-16 h-16 text-success mx-auto mb-4" />
             </motion.div>
-            <h2 className="text-xl font-bold text-text-primary mb-2">Application Submitted!</h2>
-            <p className="text-sm text-text-secondary mb-1">Your application has been submitted successfully.</p>
-            <p className="text-lg font-bold text-primary mb-4">{submittedAppId}</p>
-            <p className="text-xs text-text-secondary mb-6">Your application will be reviewed by a government officer. You will be notified of any updates.</p>
+            <h2 className="text-xl font-bold text-text-primary mb-2">Application Submitted</h2>
+            <p className="text-sm text-text-secondary mb-4">Your application was submitted in the local demo. No tracking number has been issued.</p>
+            <p className="text-xs text-text-secondary mb-6">The server will provide a tracking number when live application submission is connected.</p>
             <div className="flex gap-3 justify-center">
               <button onClick={() => navigate('/dashboard')} className="btn-primary text-sm">Go to Dashboard</button>
-              <button onClick={() => navigate(`/dashboard/applications/${submittedAppId}`)} className="btn-secondary text-sm">View Application</button>
+              <button onClick={() => navigate(`/dashboard/applications/${createdApplicationId}`)} className="btn-secondary text-sm">View Application</button>
             </div>
           </div>
         </Modal>
