@@ -36,6 +36,21 @@ database/
 
 ## 🚀 Setup & Execution Guide
 
+## Prisma integration (backend)
+
+The PostgreSQL DDL in `schema.sql` is the source design. Its 11 tables are mapped in `backend/prisma/schema.prisma`; Prisma migrations are maintained under `backend/prisma/migrations/`. The Prisma models preserve the existing table/column names and key types. PostgreSQL `CHECK` constraints are represented in SQL migrations because Prisma Schema Language does not declare these checks.
+
+From `backend/`, configure `DATABASE_URL` in the ignored `.env`, then use:
+
+```bash
+npm run db:validate
+npm run db:generate
+npm run db:migrate
+npm run db:status
+```
+
+`db:migrate` is for local development and applies pending migrations. Do not run `schema.sql` against a database containing data: that script drops and recreates its tables. For a fresh local database, either use the Prisma migrations or follow the SQL setup below; do not apply both schema-creation paths to the same database.
+
 ### Prerequisites
 - **PostgreSQL 14+** (Tested and verified on PostgreSQL 18.6).
 - `psql` command-line utility.

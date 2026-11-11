@@ -1,13 +1,239 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client-js"
-  // output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+model User {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email          String    @unique @db.VarChar(255)
+  passwordHash   String    @map("password_hash") @db.VarChar(255)
+  fullName       String    @map("full_name") @db.VarChar(255)
+  role           String    @db.VarChar(20)
+  phone          String?   @db.VarChar(50)
+  avatarUrl      String?   @map("avatar_url") @db.VarChar(500)
+  designation    String?   @db.VarChar(255)
+  department     String?   @db.VarChar(255)
+  assignedStates String[]  @default([]) @map("assigned_states")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  startup              Startup?
+  assignedApplications Application[]           @relation("AssignedOfficer")
+  verifiedDocuments    Document[]              @relation("VerifiedBy")
+  statusChanges        ApplicationStatusHistory[] @relation("StatusActor")
+  queriesRaised        ClarificationQuery[]    @relation("QueryOfficer")
+  notifications        Notification[]
+  auditLogs            AuditLog[]               @relation("AuditActor")
+
+  @@index([role], map: "idx_users_role")
+  @@map("users")
+}
+
+model AyushCategory {
+  code                 String   @id @db.VarChar(50)
+  name                 String   @unique @db.VarChar(100)
+  description          String?
+  regulatoryAuthority  String?  @map("regulatory_authority") @db.VarChar(255)
+  isActive             Boolean  @default(true) @map("is_active")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  startups     Startup[]
+  applications Application[]
+
+  @@map("ayush_categories")
+}
+
+model DocumentType {
+  code          String  @id @db.VarChar(50)
+  name          String  @db.VarChar(255)
+  category      String  @db.VarChar(50)
+  allowedFormats String @default(".pdf,.jpg,.jpeg,.png") @map("allowed_formats") @db.VarChar(100)
+  maxSizeMb     Int     @default(5) @map("max_size_mb")
+  isMandatory   Boolean @default(false) @map("is_mandatory")
+
+  documents Document[]
+
+  @@map("document_types")
+}
+
+model Startup {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId             String   @unique @map("user_id") @db.Uuid
+  legalName          String   @map("legal_name") @db.VarChar(255)
+  brandName          String   @map("brand_name") @db.VarChar(255)
+  incorporationDate  DateTime? @map("incorporation_date") @db.Date
+  incorporationType  String?  @map("incorporation_type") @db.VarChar(100)
+  registrationNumber String?  @map("registration_number") @db.VarChar(100)
+  officialEmail      String?  @map("official_email") @db.VarChar(255)
+  website            String?  @db.VarChar(255)
+  ayushDomain        String   @map("ayush_domain") @db.VarChar(50)
+  businessActivities String[] @default([]) @map("business_activities")
+  description        String?
+  products           String?
+  businessStage      String?  @map("business_stage") @db.VarChar(50)
+  targetMarket       String?  @map("target_market") @db.VarChar(255)
+  operationalStatus String   @default("Active") @map("operational_status") @db.VarChar(50)
+  state              String   @db.VarChar(100)
+  city               String?  @db.VarChar(100)
+  dpiitRecognized    Boolean  @default(false) @map("dpiit_recognized")
+  dpiitNumber        String?  @map("dpiit_number") @db.VarChar(100)
+  existingLicences   String[] @default([]) @map("existing_licences")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category     AyushCategory @relation(fields: [ayushDomain], references: [code], onDelete: Restrict)
+  founders     Founder[]
+  applications Application[]
+  documents    Document[]
+
+  @@index([userId], map: "idx_startups_user")
+  @@index([ayushDomain], map: "idx_startups_domain")
+  @@map("startups")
+}
+
+model Founder {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  startupId     String   @map("startup_id") @db.Uuid
+  name          String   @db.VarChar(255)
+  designation   String   @db.VarChar(100)
+  email         String   @db.VarChar(255)
+  phone         String   @db.VarChar(50)
+  qualification String   @db.VarChar(255)
+  isPrimary     Boolean  @default(false) @map("is_primary")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  startup Startup @relation(fields: [startupId], references: [id], onDelete: Cascade)
+
+  @@index([startupId], map: "idx_founders_startup")
+  @@map("founders")
+}
+
+model Application {
+  id                    String    @id @db.VarChar(50)
+  startupId             String    @map("startup_id") @db.Uuid
+  ayushDomain           String    @map("ayush_domain") @db.VarChar(50)
+  status                String    @default("Draft") @db.VarChar(50)
+  state                 String    @db.VarChar(100)
+  assignedOfficerId     String?   @map("assigned_officer_id") @db.Uuid
+  regulatoryDetails     Json?     @default("{}") @map("regulatory_details") @db.JsonB
+  businessDetailsSnapshot Json?   @default("{}") @map("business_details_snapshot") @db.JsonB
+  certificateNumber     String?   @unique @map("certificate_number") @db.VarChar(100)
+  certificateIssuedAt   DateTime? @map("certificate_issued_at") @db.Timestamptz(6)
+  submittedAt           DateTime? @map("submitted_at") @db.Timestamptz(6)
+  lastUpdated            DateTime  @default(now()) @map("last_updated") @db.Timestamptz(6)
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  startup       Startup        @relation(fields: [startupId], references: [id], onDelete: Cascade)
+  category      AyushCategory  @relation(fields: [ayushDomain], references: [code], onDelete: Restrict)
+  assignedOfficer User?         @relation("AssignedOfficer", fields: [assignedOfficerId], references: [id], onDelete: SetNull)
+  documents     Document[]
+  statusHistory ApplicationStatusHistory[]
+  queries       ClarificationQuery[]
+  notifications Notification[]
+
+  @@index([status], map: "idx_applications_status")
+  @@index([startupId], map: "idx_applications_startup")
+  @@index([assignedOfficerId], map: "idx_applications_officer")
+  @@index([ayushDomain], map: "idx_applications_domain")
+  @@map("applications")
+}
+
+model Document {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId    String?   @map("application_id") @db.VarChar(50)
+  startupId        String    @map("startup_id") @db.Uuid
+  documentTypeCode String?   @map("document_type_code") @db.VarChar(50)
+  name             String    @db.VarChar(255)
+  fileName         String    @map("file_name") @db.VarChar(255)
+  fileUrl          String    @map("file_url") @db.VarChar(500)
+  fileSize         String    @map("file_size") @db.VarChar(50)
+  mimeType         String    @default("application/pdf") @map("mime_type") @db.VarChar(100)
+  status           String    @default("Uploaded") @db.VarChar(50)
+  remark           String?
+  verifiedById     String?   @map("verified_by_id") @db.Uuid
+  verifiedAt       DateTime? @map("verified_at") @db.Timestamptz(6)
+  uploadedAt       DateTime  @default(now()) @map("uploaded_at") @db.Timestamptz(6)
+
+  application Application? @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  startup     Startup      @relation(fields: [startupId], references: [id], onDelete: Cascade)
+  documentType DocumentType? @relation(fields: [documentTypeCode], references: [code], onDelete: SetNull)
+  verifiedBy  User?        @relation("VerifiedBy", fields: [verifiedById], references: [id], onDelete: SetNull)
+
+  @@index([applicationId], map: "idx_documents_application")
+  @@index([startupId], map: "idx_documents_startup")
+  @@index([status], map: "idx_documents_status")
+  @@map("documents")
+}
+
+model ApplicationStatusHistory {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId  String    @map("application_id") @db.VarChar(50)
+  previousStatus String?   @map("previous_status") @db.VarChar(50)
+  status         String    @db.VarChar(50)
+  remark         String
+  officerName    String?   @map("officer_name") @db.VarChar(255)
+  actorId        String?   @map("actor_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  actor       User?       @relation("StatusActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([applicationId, createdAt], map: "idx_status_history_application")
+  @@map("application_status_history")
+}
+
+model ClarificationQuery {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId String    @map("application_id") @db.VarChar(50)
+  officerId     String    @map("officer_id") @db.Uuid
+  queryText     String    @map("query_text")
+  responseText  String?   @map("response_text")
+  status        String    @default("Pending") @db.VarChar(50)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  resolvedAt    DateTime? @map("resolved_at") @db.Timestamptz(6)
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  officer     User        @relation("QueryOfficer", fields: [officerId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId], map: "idx_queries_application")
+  @@map("clarification_queries")
+}
+
+model Notification {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  title         String    @db.VarChar(255)
+  message       String
+  type          String    @default("status_update") @db.VarChar(50)
+  applicationId String?   @map("application_id") @db.VarChar(50)
+  isRead        Boolean   @default(false) @map("is_read")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  application Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+
+  @@index([userId, isRead], map: "idx_notifications_user_read")
+  @@map("notifications")
+}
+
+model AuditLog {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  actorId     String?  @map("actor_id") @db.Uuid
+  actorName   String   @map("actor_name") @db.VarChar(255)
+  actorRole   String   @map("actor_role") @db.VarChar(50)
+  action      String   @db.VarChar(255)
+  targetEntity String  @map("target_entity") @db.VarChar(100)
+  targetId    String   @map("target_id") @db.VarChar(100)
+  details     String
+  ipAddress   String?  @map("ip_address") @db.VarChar(50)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  actor User? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt(sort: Desc)], map: "idx_audit_logs_created")
+  @@map("audit_logs")
 }

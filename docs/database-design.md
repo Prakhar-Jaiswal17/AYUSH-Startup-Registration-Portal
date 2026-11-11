@@ -1,6 +1,6 @@
 # Relational Database Design Specification
 
-This document records the target relational design and the separate SQL-script implementation. It is not the current Prisma model: `backend/prisma/schema.prisma` has no models. See [implementation-status.md](./implementation-status.md) for verified implementation and alignment gaps.
+This document records the PostgreSQL relational design and its SQL-script implementation. `backend/prisma/schema.prisma` maps the 11 SQL tables, and `backend/prisma/migrations/` contains the versioned PostgreSQL migrations used to create them. The API contract now specifies explicit wire-to-database mappings; the remaining frontend and backend integration work is tracked in [implementation-status.md](./implementation-status.md).
 
 ## 1. Executive Summary & Design Principles
 
@@ -261,15 +261,15 @@ Immutable log of system-wide administrative, security, and lifecycle actions for
 
 ## 5. PostgreSQL SQL Scripts (Phase 2, Chunk 2)
 
-The root `database/` directory contains PostgreSQL scripts. The database README reports testing them on PostgreSQL 18.6; this review did not rerun them. They are not connected to the current Prisma schema:
+The root `database/` directory contains PostgreSQL scripts. The existing SQL design is mapped by `backend/prisma/schema.prisma` and the versioned Prisma migrations. The standalone scripts remain available for DBMS demonstrations:
 - **`database/schema.sql`**: DDL defining 11 tables with primary keys (`UUID` / `VARCHAR`), foreign keys, constraints, and indexes.
 - **`database/seed.sql`**: Fictional sample data for the SQL tables, including demo logins and application records.
 - **`database/queries.sql`**: Demonstrates CRUD, multi-table JOINs, GROUP BY aggregations, CTEs, subqueries, and ACID transactions.
 - **`database/README.md`**: Complete execution instructions and verification guide.
 
-### Differences from the agreed API contract
+### API mapping rules and schema limits
 
-The SQL scripts and API contract currently describe different interfaces. In SQL, `applications.id` is the formatted tracking number; the contract expects a UUID `id` and a separate `trackingNumber`. SQL roles/statuses use lowercase/title-case values, while the contract uses uppercase roles and snake-case status enums. SQL category and document-type keys are codes; the contract expects UUID IDs. Resolve these differences with the backend owner before generating Prisma models or wiring live API calls. Do not change the agreed contract unilaterally.
+The API contract now defines explicit mappings while preserving the SQL/Prisma schema: API role/status values map to the database's constrained strings; AYUSH and document type keys use their existing codes; and the formatted application key is the tracking number. API integration must follow the request/response mapping in `api-contract.md` and must not alter the database design to fit stale frontend field names. Some requested concepts (such as account activation flags and persistent resource records) are not supported by the current schema.
 
 ### SQL Script Table Structure Summary
 

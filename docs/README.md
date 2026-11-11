@@ -21,12 +21,13 @@ docs/
 ├── database-workflow.md       # [Phase 2] Frontend-to-Database Mapping & Transaction Boundaries
 │
 ├── api-contract.md            # [Phase 2 Chunk 3] Agreed target HTTP API contract
-└── implementation-status.md   # Verified repository implementation state and integration gaps
+├── implementation-status.md   # Verified repository implementation state and integration gaps
+└── ../desk_App/README.md      # Electron desktop launcher setup and current limitations
 ```
 
 ## Current implementation status
 
-The requirement, architecture, ER, database workflow, and API documents describe the intended system. The current code is a frontend prototype with mock-backed contexts, a prepared Axios client, an Express health-check scaffold, and standalone PostgreSQL SQL scripts. It does not yet implement live application APIs or connect Prisma to the SQL schema. See [implementation-status.md](./implementation-status.md) for the verified state, current gaps, and verification results.
+The React frontend remains mock-backed, and the Express server currently provides only a health check. The Electron desktop app launches that same React website in a native window, including its public pages and startup/officer/admin demo flows. PostgreSQL is mapped in Prisma and tracked through migrations; business API routes and live frontend/database integration remain future work. See [implementation-status.md](./implementation-status.md) for current state and gaps, and [the desktop app guide](../desk_App/README.md) for launch instructions.
 
 ---
 
@@ -54,7 +55,7 @@ The requirement, architecture, ER, database workflow, and API documents describe
 
 ## ⚙️ Phase 2 — Chunk 2: Relational Schema & PostgreSQL Implementation
 
-The PostgreSQL DDL, sample data, and query scripts reside in the root [`database/`](../database) directory. They are not currently wired to the Prisma backend:
+The PostgreSQL DDL, sample data, and query scripts reside in the root [`database/`](../database) directory. The canonical database model is mapped into Prisma in `backend/prisma/schema.prisma`, with its reproducible migration history in `backend/prisma/migrations/`:
 
 | File | Description |
 | :--- | :--- |
@@ -63,12 +64,14 @@ The PostgreSQL DDL, sample data, and query scripts reside in the root [`database
 | **[`database/queries.sql`](../database/queries.sql)** | Comprehensive SQL demonstration queries covering CRUD, multi-table INNER/LEFT JOINs, GROUP BY aggregations, CTEs, subqueries, ACID transactions, and Recharts analytics feeds. |
 | **[`database/README.md`](../database/README.md)** | Setup guide, execution order, demo account credentials, and PostgreSQL execution verification. |
 
+Commit `backend/prisma/schema.prisma` and all files under `backend/prisma/migrations/`. They are the shared database history. Do not commit `.env` files, database URLs, or `node_modules`.
+
 ---
 
-## 🔌 Phase 2 — Chunk 3: API Contract
+## 🔌 Phase 2 — Chunk 4: API Contract & Backend Integration
 
 | Document | Description |
 | :--- | :--- |
-| **[`api-contract.md`](./api-contract.md)** | Agreed target contract for base URL, JWT auth, shared enums, Prisma model fields, route ownership, endpoint shapes, errors, status labels, uploads, and team constraints. The backend endpoints and Prisma models are not implemented yet; see [implementation-status.md](./implementation-status.md) for integration gaps. |
+| **[`api-contract.md`](./api-contract.md)** | Agreed target HTTP contract for base URL, JWT auth, shared enums, Prisma model fields, route ownership, endpoint shapes, errors, status labels, uploads, and team constraints. Backend business endpoints are not implemented yet; see [implementation-status.md](./implementation-status.md) for integration gaps. |
 
 
