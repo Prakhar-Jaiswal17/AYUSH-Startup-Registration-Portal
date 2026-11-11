@@ -1,0 +1,9 @@
+{
+  "name": "ayush-portal-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Electron desktop companion for the AYUSH Startup Registration Portal",
+  "main": "main.js",
+  "scripts": { "start": "electron ." },
+  "devDependencies": { "electron": "^35.0.0" }
+}

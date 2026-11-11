@@ -21,12 +21,13 @@ docs/
 ├── database-workflow.md       # [Phase 2] Frontend-to-Database Mapping & Transaction Boundaries
 │
 ├── api-contract.md            # [Phase 2 Chunk 3] Agreed target HTTP API contract
-└── implementation-status.md   # Verified repository implementation state and integration gaps
+├── implementation-status.md   # Verified repository implementation state and integration gaps
+└── ../desk_App/README.md      # Electron desktop launcher setup and current limitations
 ```
 
 ## Current implementation status
 
-The frontend still uses mock-backed contexts and the Express server currently provides a health check. The PostgreSQL schema is now mapped in Prisma and tracked through migrations; business API routes and live frontend integration remain future work. See [implementation-status.md](./implementation-status.md) for the verified state and remaining integration gaps.
+The React frontend remains mock-backed, and the Express server currently provides only a health check. The Electron desktop app launches that same React website in a native window, including its public pages and startup/officer/admin demo flows. PostgreSQL is mapped in Prisma and tracked through migrations; business API routes and live frontend/database integration remain future work. See [implementation-status.md](./implementation-status.md) for current state and gaps, and [the desktop app guide](../desk_App/README.md) for launch instructions.
 
 ---
 
