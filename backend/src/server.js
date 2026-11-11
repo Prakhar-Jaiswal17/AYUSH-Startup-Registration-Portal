@@ -1,5 +1,6 @@
 const express = require('express')
 const cors = require('cors')
+const resourceRoutes = require('./routes/resources')
 require('dotenv').config()
 
 const app = express()
@@ -9,6 +10,7 @@ app.use(cors({
     origin: process.env.FRONTEND_ORIGIN || 'http://localhost:5173',
 }))
 app.use(express.json())
+app.use('/api/resources', resourceRoutes)
 
 app.get('/api/health', (req, res) => {
     res.json({ status: 'OK' })

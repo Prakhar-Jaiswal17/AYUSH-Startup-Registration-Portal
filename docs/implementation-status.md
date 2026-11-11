@@ -1,6 +1,6 @@
 # Implementation Status
 
-**Verified:** 11 November 2026  
+**Reviewed:** 12 November 2026  
 **Scope:** Repository state in the `main` working tree. The design and API documents below describe the target system unless this page says they are implemented.
 
 ## Current state
@@ -11,10 +11,10 @@
 | Desktop app | Electron launcher in `desk_App/` starts the existing Vite frontend and loads it in a native desktop window. It reuses the same React routes, demo accounts, mock data, and browser-storage behavior; context isolation is enabled and Node integration is disabled. | Requires Node/npm, Electron installed in `desk_App/`, and frontend dependencies installed. This is a development launcher, not a packaged installer. It does not add a separate desktop-only workflow or live backend integration. |
 | API client | Axios base URL from `VITE_API_URL` with `http://localhost:3005/api` fallback; Bearer-token request interceptor; centralized error-message helper; wrappers prepared against `api-contract.md`. | The wrappers have no screen/context consumers yet. `AuthContext` does not store a backend token. |
 | Frontend state | `AuthContext`, `ApplicationContext`, and `NotificationContext` still use mock data and browser storage. The new-application demo keeps the full form snapshot locally and uses an internal `mock-…` record ID. | No server-generated tracking number is available in the demo. The UI explicitly does not display a fabricated one. |
-| Backend | CommonJS Express scaffold listens on port 3005, enables CORS/JSON parsing, and exposes `GET /api/health`. | Authentication middleware and business route files are absent. No live API workflow is implemented. |
+| Backend | CommonJS Express scaffold listens on port 3005, enables CORS/JSON parsing, exposes `GET /api/health`, and now serves public static resources from `GET /api/resources` and `GET /api/resources/:id` with filtering and pagination. | Authentication middleware and protected business routes are absent. Database-backed routes and live frontend API integration are not implemented. The resources route has not been runtime-verified. |
 | Prisma | Prisma 7 models map all 11 tables; migrations create tables, indexes, foreign keys, and CHECK constraints; Prisma Client is generated. | Express routes/services are not integrated with Prisma. |
 | SQL database | `database/schema.sql`, `seed.sql`, and `queries.sql` remain available as the standalone SQL/DBMS scripts. The Prisma migration history is the reproducible setup path for the backend. | Seed/query scripts are not part of the Prisma migrations. Use one schema-creation path on a fresh database; do not run the destructive SQL schema script over a database initialized by migrations. |
-| File handling | UI placeholders and a reusable client-side file-selection component exist. | The new-application wizard and document centre do not persist uploaded files to the API or private server storage. |
+| File handling | Upload instructions and the reusable file-selection component use the schema defaults: 5 MB and PDF/JPG/JPEG/PNG. | The new-application wizard and document screens remain mock placeholders; selected files are not persisted to the API or private server storage. |
 
 ## Phase A1 frontend preparation
 
@@ -34,7 +34,7 @@ The API contract is the agreed target. Before live integration, account for thes
 2. Translate uppercase API roles/statuses to lowercase/title-case database values.
 3. The application ID is the formatted tracking number; an optional `trackingNumber` alias may return the same value.
 4. Application regulatory/business data uses flexible JSONB fields; founders belong to the startup profile.
-5. The upload UI says 10 MB and allows DOC; the database default is 5 MB and `.pdf,.jpg,.jpeg,.png`.
+5. The upload UI now reflects the 5 MB and `.pdf,.jpg,.jpeg,.png` defaults; actual upload and server-side validation are not implemented.
 6. The API contract uses `CLIENT_URL`, while `.env.example` and `server.js` use `FRONTEND_ORIGIN`.
 7. `certificate_number` is legacy/internal only and must not be presented as a statutory license, AYUSH approval, or legal certification.
 8. The schema lacks activation, uploader, persistent resource, and review timestamp fields; do not assume these are persisted.
@@ -43,6 +43,7 @@ The API contract is the agreed target. Before live integration, account for thes
 
 - `npm run db:validate` passed and Prisma Client was generated. A previous `npm run db:status` confirmed both migrations applied. Database credentials are not recorded here.
 - `npm run build` passed with dependency comment and bundle-size warnings.
+- The public static resources route and upload-copy changes were added after that build and have not been runtime-verified.
 - `npm run lint` could not start because ESLint 9 requires an `eslint.config.*` file, which is absent from the repository.
 - Browser check confirmed demo startup login, local draft feedback, mock document metadata, and navigation through the wizard to its review step. No backend submission was made.
 - Runtime database connectivity and backend API behavior remain unverified.

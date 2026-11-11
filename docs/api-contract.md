@@ -1,10 +1,10 @@
 # API Contract — AYUSH Startup Registration Portal
 
-> **Document version:** 1.1
-> **Phase:** Phase 2 — Chunk 4 (API contract aligned to the existing PostgreSQL schema)
-> **Status:** Database mapping updated 11 November 2026; API aliases must follow the mappings below. This does not change the SQL or Prisma schema.
+> **Document version:** 1.2 (draft)
+> **Phase:** Phase 2 — Chunk 4 (proposed API contract reconciliation)
+> **Status:** Proposed alignment with the existing PostgreSQL schema; pending review by both route owners. This draft does not change the SQL or Prisma schema.
 
-This contract is the single source of truth for all HTTP API communication between the React frontend and the Express backend. Both Prakhar (backend) and the teammate (frontend integration + officer/review routes) must follow this document exactly.
+This document is intended to be the source of truth for HTTP API communication between the React frontend and Express backend. Version 1.2 is a proposal; both route owners must review it before its field changes replace the previously agreed contract.
 
 ---
 
@@ -40,7 +40,7 @@ This contract is the single source of truth for all HTTP API communication betwe
 | Local development | `http://localhost:3005/api` |
 | Frontend env variable | `VITE_API_URL=http://localhost:3005/api` |
 
-> **Current frontend status (11 November 2026):** `frontend/src/services/api.js` now uses `VITE_API_URL` with the documented `http://localhost:3005/api` fallback, and `frontend/.env.example` contains the same value. No local `.env` file is required or committed.
+> **Current frontend status (12 November 2026):** `frontend/src/services/api.js` uses `VITE_API_URL` with the `http://localhost:3005/api` fallback, and `frontend/.env.example` contains the same value. No local `.env` file is required or committed.
 
 Backend env variables required in `backend/.env`:
 
@@ -49,8 +49,10 @@ DATABASE_URL=...          # PostgreSQL connection string (Prakhar owns this)
 JWT_SECRET=...            # Random 256-bit secret
 JWT_EXPIRES_IN=7d         # Token lifetime
 PORT=3005
-CLIENT_URL=http://localhost:5173
+FRONTEND_ORIGIN=http://localhost:5173
 ```
+
+`FRONTEND_ORIGIN` is the browser origin allowed by the Express CORS configuration.
 
 ---
 
@@ -196,13 +198,13 @@ These are the existing Prisma models and physical PostgreSQL fields. They are au
 | `User` | UUID `id`; `email`, `passwordHash`, `fullName`, `role`, optional `phone`, `avatarUrl`, `designation`, `department`, `assignedStates`, timestamps. `role` stores lowercase values. | API `name` maps to `fullName`; `role` maps through Section 3. There is no `isActive` column, so account activation/deactivation is not supported by this schema. |
 | `AyushCategory` | `code` is the primary key; `name` is unique; `description`, `regulatoryAuthority`, `isActive`, `createdAt`. | Use `categoryCode`/`ayushDomain` as the key, not a UUID `categoryId`. |
 | `DocumentType` | `code` is the primary key; `name`, constrained `category`, comma-separated `allowedFormats`, positive `maxSizeMb`, `isMandatory`. | Use `documentTypeCode`; derive accepted extensions and max bytes from these fields. There is no UUID ID, description, allowed MIME type array, or per-file byte-limit column. |
-| `Startup` | UUID `id`; unique `userId`; `legalName`, `brandName`, incorporation details, registration number, official email, website, `ayushDomain` FK to category code, arrays `businessActivities`/`existingLicences`, description/products/stage/market, operational status, state/city, DPIIT fields, timestamps. | One profile belongs to one user. API must use these fields or explicitly map `startupName` to both name fields under a documented product rule. |
+| `Startup` | UUID `id`; unique `userId`; `legalName`, `brandName`, incorporation details, registration number, official email, website, `ayushDomain` FK to category code, arrays `businessActivities`/`existingLicences`, description/products/stage/market, operational status, state/city, DPIIT fields, timestamps. | One profile belongs to one user. Use `legalName` and `brandName` separately; do not infer one from the other. |
 | `Founder` | UUID `id`; `startupId` FK; required name, designation, email, phone, qualification; `isPrimary`; `createdAt`. | Founders belong to the startup profile, not an application. No applicationId, DIN, or shareholding is stored. |
 | `Application` | String `id` primary key in `APP-YYYY-NNN` format; `startupId`; `ayushDomain` FK to category code; stored status; required state; optional assigned officer; JSONB `regulatoryDetails` and `businessDetailsSnapshot`; legacy nullable certificate fields; submitted/created/lastUpdated timestamps. | `id` itself is the tracking number. Do not expose a UUID application id or create a second stored tracking-number field; an identical API alias is optional. Review/decision timestamps and officer remarks are not application columns; use status history for remarks/timing. |
-| `Document` | UUID `id`; optional application FK; required startup FK; optional `documentTypeCode`; `name`, `fileName`, `fileUrl`, string `fileSize`, `mimeType`, stored status, remark, optional verifier/timestamp, `uploadedAt`. | No uploadedBy column. Store the byte count as a decimal string in `fileSize`; API `fileSizeBytes` is parsed from it. `fileUrl` must be a private storage reference and must not be returned as a public URL. |
+| `Document` | UUID `id`; optional application FK; required startup FK; optional `documentTypeCode`; `name`, `fileName`, `fileUrl`, string `fileSize`, `mimeType`, stored status, remark, optional verifier/timestamp, `uploadedAt`. | No uploadedBy column. Store the byte count as a decimal string in `fileSize`; API `fileSizeBytes` is parsed from it. Map `documentTypeCode` to `document_type_code` and API document status to the stored title-case value. `fileUrl` must be a private storage reference and must not be returned as a public URL. |
 | `ApplicationStatusHistory` | UUID `id`; application FK; nullable `previousStatus`; required `status`, `remark`; optional `officerName` and `actorId`; `createdAt`. | Use `status` (not `newStatus`) in persistence. Actor FK is nullable; `remark` is required. |
 | `ClarificationQuery` | UUID `id`; application FK; required `officerId`, `queryText`; nullable `responseText`; stored `status` (`Pending`/`Resolved`); `createdAt`, nullable `resolvedAt`. | Map `applicantResponse` to `responseText`. There is no `responseSubmittedAt`; resolution time is distinct. |
-| `Notification` | UUID `id`; `userId`; title/message/type; nullable `applicationId` (the formatted string key); `isRead`; `createdAt`. | Application references use the tracking-number string. |
+| `Notification` | UUID `id`; `userId`; title/message/type; nullable `applicationId` (the formatted string key); `isRead`; `createdAt`. | Application references use the tracking-number string, not a UUID. |
 | `AuditLog` | UUID `id`; nullable actor FK; required `actorName`, constrained `actorRole`, action, `targetEntity`, string `targetId`, text `details`, optional IP, `createdAt`. | Map `entityType`/`entityId`/`metadata` only if serialized into these existing fields. Do not assume a JSON metadata column. |
 
 The following earlier contract fields have no persistence column and must not be treated as stored: `User.isActive`; application `reviewStartedAt`, `decidedAt`, and `officerRemarks`; founder `applicationId`, `dinNumber`, and `shareholding`; document `uploadedById`; query `responseSubmittedAt`; and all `Resource` records. The resource endpoints must serve static/configured content unless a future database change is agreed. `certificateNumber` is legacy data only and must never be represented as an AYUSH license, statutory approval, or government certification issued by this portal.
@@ -379,7 +381,8 @@ Get the authenticated user's profile.
   "data": {
     "id": "uuid",
     "userId": "uuid",
-    "startupName": "AyurTech Innovations Pvt. Ltd.",
+    "legalName": "AyurTech Innovations Pvt. Ltd.",
+    "brandName": "AyurTech",
     "registrationNumber": "U72900MH2024PTC123456",
     "incorporationDate": "2024-03-01T00:00:00.000Z",
     "website": "https://ayurtech.in",
@@ -396,7 +399,7 @@ Update startup profile.
 
 **Auth:** `STARTUP` (own profile only)
 
-**Request body:** Any subset of startup fields (`startupName`, `registrationNumber`, `incorporationDate`, `website`, `description`).
+**Request body:** Any supported subset of startup fields, using schema names such as `legalName`, `brandName`, `registrationNumber`, `incorporationDate`, `website`, and `description`. AYUSH category references use the category `code`.
 
 **Success `200`:** Updated startup object (same shape as GET above).
 
@@ -413,9 +416,11 @@ Create a new draft application.
 **Request body:**
 ```json
 {
-  "categoryId": "uuid",
+  "categoryCode": "AYU",
+  "state": "Maharashtra",
   "startupDetails": {
-    "startupName": "AyurTech Innovations Pvt. Ltd.",
+    "legalName": "AyurTech Innovations Pvt. Ltd.",
+    "brandName": "AyurTech",
     "registrationNumber": "U72900MH2024PTC123456",
     "incorporationDate": "2024-03-01",
     "website": "https://ayurtech.in",
@@ -427,8 +432,8 @@ Create a new draft application.
       "designation": "CEO & Co-founder",
       "email": "riya@ayurtech.in",
       "phone": "9876543210",
-      "dinNumber": "12345678",
-      "shareholding": 60.00
+      "qualification": "BAMS",
+      "isPrimary": true
     }
   ],
   "regulatoryInfo": {
@@ -446,15 +451,17 @@ Create a new draft application.
 }
 ```
 
+`categoryCode` maps to the AYUSH category key. `startupDetails` and `founders` are persisted on the linked startup profile; `regulatoryInfo` maps to `Application.regulatoryDetails`, and `businessInfo` maps to `Application.businessDetailsSnapshot`. Founder records are not application-owned and must not include `dinNumber` or `shareholding` unless a schema change is agreed.
+
 **Success `201`:**
 ```json
 {
   "success": true,
   "data": {
-    "id": "uuid",
+    "id": "APP-2025-007",
     "trackingNumber": "APP-2025-007",
     "status": "DRAFT",
-    "categoryId": "uuid",
+    "categoryCode": "AYU",
     "createdAt": "2025-11-11T10:00:00.000Z"
   }
 }
@@ -475,13 +482,13 @@ List applications for the authenticated startup.
 **Success `200`:** Paginated list (see [Section 5](#5-pagination-shape)), each item:
 ```json
 {
-  "id": "uuid",
+  "id": "APP-2025-007",
   "trackingNumber": "APP-2025-007",
   "status": "DRAFT",
-  "startupName": "AyurTech Innovations Pvt. Ltd.",
+  "legalName": "AyurTech Innovations Pvt. Ltd.",
   "categoryName": "Ayurveda",
   "submittedAt": null,
-  "updatedAt": "2025-11-11T10:00:00.000Z"
+  "lastUpdated": "2025-11-11T10:00:00.000Z"
 }
 ```
 
@@ -498,20 +505,20 @@ Get full application details.
 {
   "success": true,
   "data": {
-    "id": "uuid",
+    "id": "APP-2025-007",
     "trackingNumber": "APP-2025-007",
     "status": "UNDER_REVIEW",
-    "category": { "id": "uuid", "name": "Ayurveda", "code": "AYU" },
-    "startup": { "id": "uuid", "startupName": "AyurTech Innovations Pvt. Ltd." },
+    "category": { "code": "AYU", "name": "Ayurveda" },
+    "startup": { "id": "uuid", "legalName": "AyurTech Innovations Pvt. Ltd.", "brandName": "AyurTech" },
     "assignedOfficer": { "id": "uuid", "name": "Dr. Priya Nair" },
     "founders": [ { "name": "Riya Sharma", "designation": "CEO", "email": "riya@ayurtech.in" } ],
     "regulatoryInfo": { "dpiitRecognized": false, "gstNumber": "27AAAAA0000A1Z5" },
     "businessInfo": { "employeeCount": 12, "fundingStage": "Seed" },
-    "documents": [ { "id": "uuid", "fileName": "pan_card.pdf", "verificationStatus": "VERIFIED" } ],
+    "documents": [ { "id": "uuid", "fileName": "pan_card.pdf", "status": "VERIFIED", "documentTypeCode": "PAN_CARD" } ],
     "statusHistory": [
       {
         "previousStatus": null,
-        "newStatus": "DRAFT",
+        "status": "DRAFT",
         "remark": "Draft created",
         "changedBy": { "id": "uuid", "name": "Riya Sharma" },
         "createdAt": "2025-11-01T10:00:00.000Z"
@@ -519,7 +526,7 @@ Get full application details.
     ],
     "queries": [ ],
     "submittedAt": "2025-11-05T09:00:00.000Z",
-    "updatedAt": "2025-11-10T14:00:00.000Z"
+    "lastUpdated": "2025-11-10T14:00:00.000Z"
   }
 }
 ```
@@ -553,7 +560,7 @@ Submit a draft application for review.
 {
   "success": true,
   "data": {
-    "id": "uuid",
+    "id": "APP-2025-007",
     "trackingNumber": "APP-2025-007",
     "status": "SUBMITTED",
     "submittedAt": "2025-11-11T12:00:00.000Z"
@@ -579,9 +586,9 @@ Submit a draft application for review.
   "data": [
     {
       "previousStatus": null,
-      "newStatus": "DRAFT",
+      "status": "DRAFT",
       "changedBy": { "id": "uuid", "name": "Riya Sharma" },
-      "remarks": null,
+      "remark": "Draft created",
       "createdAt": "2025-11-01T10:00:00.000Z"
     }
   ]
@@ -604,7 +611,7 @@ Upload a document for an application.
 | Field | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
 | `file` | File | Yes | The document file |
-| `documentTypeId` | String (UUID) | Yes | FK → `DocumentType.id` |
+| `documentTypeCode` | String | Yes | FK → `DocumentType.code` |
 
 **Success `201`:**
 ```json
@@ -615,15 +622,15 @@ Upload a document for an application.
     "fileName": "pan_card.pdf",
     "mimeType": "application/pdf",
     "fileSizeBytes": 102400,
-    "documentTypeId": "uuid",
     "documentTypeName": "PAN Card",
-    "verificationStatus": "PENDING",
+    "documentTypeCode": "PAN_CARD",
+    "status": "UPLOADED",
     "uploadedAt": "2025-11-11T12:00:00.000Z"
   }
 }
 ```
 
-**Errors:** `413` if file exceeds `maxFileSizeBytes` for the document type. `415` if MIME type is not in `allowedMimeTypes`.
+**Errors:** `413` if file exceeds `maxSizeMb` for the document type. `415` if its extension is not listed in `allowedFormats` or its MIME type does not match the extension.
 
 ---
 
@@ -644,12 +651,12 @@ Officer verifies or rejects a document.
 **Request body:**
 ```json
 {
-  "verificationStatus": "VERIFIED",
-  "verificationRemarks": "Document is clear and valid."
+  "status": "VERIFIED",
+  "remark": "Document is clear and valid."
 }
 ```
 
-`remark` maps to `documents.remark`.
+API `status` maps to the stored document status; `remark` maps to `documents.remark`.
 
 **Success `200`:** Updated document object. API `status` is translated to the stored value in `documents.status`.
 
@@ -692,9 +699,9 @@ Officer raises a clarification query. Status transitions to `QUERY_RAISED`.
   "success": true,
   "data": {
     "id": "uuid",
-    "applicationId": "uuid",
+    "applicationId": "APP-2025-007",
     "queryText": "Please provide audited financial statements for FY 2023-24.",
-    "isResolved": false,
+    "status": "PENDING",
     "createdAt": "2025-11-11T14:00:00.000Z"
   }
 }
@@ -710,7 +717,7 @@ List all clarification queries for an application.
 
 **Auth:** `STARTUP` (own), `OFFICER`, `ADMIN`
 
-**Success `200`:** Array of query objects including `applicantResponse` and `responseSubmittedAt`.
+**Success `200`:** Array of query objects including `applicantResponse` (mapped from `responseText`), `status`, and `resolvedAt`. The database does not store a response-submitted timestamp, so do not return `responseSubmittedAt`.
 
 ---
 
@@ -727,7 +734,7 @@ Startup submits a response to a clarification query.
 }
 ```
 
-**Success `200`:** Updated query object with `applicantResponse` and `responseSubmittedAt` set.
+**Success `200`:** Updated query object with `applicantResponse` set. The database does not store a response-submitted timestamp.
 
 ---
 
@@ -739,7 +746,7 @@ Officer marks a query as resolved.
 
 **Request body:** None
 
-**Success `200`:** Updated query with `isResolved: true`.
+**Success `200`:** Updated query with API `status: "RESOLVED"` and `resolvedAt` set. `isResolved` may be derived as `status === "RESOLVED"` if a client compatibility alias is needed.
 
 ---
 
@@ -751,7 +758,7 @@ Get all applications assigned to the authenticated officer, or all submitted app
 
 **Auth:** `OFFICER`, `ADMIN`
 
-**Query params:** `status`, `categoryId`, `page`, `limit`, `search` (startup name or tracking number)
+**Query params:** `status`, `categoryCode`, `page`, `limit`, `search` (startup legal name or tracking number)
 
 **Success `200`:** Paginated list of applications (same item shape as [Section 10 GET /api/applications](#get-apiapplications)).
 
@@ -787,12 +794,13 @@ Officer starts reviewing a submitted application. Status transitions to `UNDER_R
 {
   "success": true,
   "data": {
-    "id": "uuid",
-    "status": "UNDER_REVIEW",
-    "reviewStartedAt": "2025-11-11T14:00:00.000Z"
+    "id": "APP-2025-007",
+    "status": "UNDER_REVIEW"
   }
 }
 ```
+
+The review start time can be derived from the matching status-history entry; it is not a separate application column.
 
 ---
 
@@ -822,7 +830,7 @@ Officer approves or rejects an application.
 {
   "success": true,
   "data": {
-    "id": "uuid",
+    "id": "APP-2025-007",
     "trackingNumber": "APP-2025-007",
     "status": "APPROVED",
     "officerRemarks": "All documents verified..."
@@ -851,7 +859,7 @@ Officer approves or rejects an application.
       "message": "Your application APP-2025-007 has been submitted successfully.",
       "type": "STATUS_CHANGE",
       "isRead": false,
-      "applicationId": "uuid",
+      "applicationId": "APP-2025-007",
       "createdAt": "2025-11-11T12:00:00.000Z"
     }
   ]
@@ -926,25 +934,15 @@ Mark all notifications as read for the authenticated user.
 
 **Auth:** `ADMIN` only
 
-**Query params:** `role`, `isActive`, `page`, `limit`, `search`
+**Query params:** `role`, `page`, `limit`, `search`
 
 **Success `200`:** Paginated list of user objects (without `passwordHash`).
 
 ---
 
-### `PATCH /api/admin/users/:id/toggle-active`
+### `PATCH /api/admin/users/:id/toggle-active` — deferred
 
-Activate or deactivate a user account.
-
-**Auth:** `ADMIN` only
-
-**Success `200`:**
-```json
-{
-  "success": true,
-  "data": { "id": "uuid", "isActive": false }
-}
-```
+The current `User` schema has no account-active field. Do not implement this route or expose an `isActive` filter until both owners agree to a schema change and its migration. If the feature is not approved, remove this route from the agreed contract and frontend wrapper.
 
 ---
 
@@ -968,15 +966,23 @@ Resources are publicly accessible guides and FAQs (read-only for non-admins). Th
 
 **Query params:** `category`, `search`, `page`, `limit`
 
-**Success `200`:** Paginated list:
+**Success `200`:** Paginated list using the common pagination envelope from Section 5:
 ```json
 {
-  "id": "uuid",
-  "title": "How to register an AYUSH startup",
-  "category": "Guide",
-  "summary": "Step-by-step registration walkthrough.",
-  "url": "https://ayush.gov.in/resource/1",
-  "publishedAt": "2025-01-01T00:00:00.000Z"
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "id": "res_007",
+        "title": "AYUSH Startup Registration Guide",
+        "category": "Guide",
+        "summary": "A guide to registering an AYUSH startup on the portal.",
+        "url": "#",
+        "publishedAt": null
+      }
+    ],
+    "pagination": { "page": 1, "limit": 10, "total": 1, "totalPages": 1 }
+  }
 }
 ```
 
@@ -984,13 +990,13 @@ Resources are publicly accessible guides and FAQs (read-only for non-admins). Th
 
 **Auth:** None
 
-**Success `200`:** Full resource object.
+**Success `200`:** `{ "success": true, "data": <resource object> }`. Static resource IDs are strings; `publishedAt` is `null` when the curated entry has no publication date.
 
 ---
 
 ### `GET /api/categories`
 
-Returns the list of AYUSH categories (Ayurveda, Yoga & Naturopathy, Unani, Siddha, Homoeopathy).
+Returns the list of AYUSH categories (Ayurveda, Yoga & Naturopathy, Unani, Siddha, Homoeopathy). The `code` is the category identifier; there is no separate UUID `id`.
 
 **Auth:** None (public)
 
@@ -999,7 +1005,7 @@ Returns the list of AYUSH categories (Ayurveda, Yoga & Naturopathy, Unani, Siddh
 {
   "success": true,
   "data": [
-    { "id": "uuid", "name": "Ayurveda", "code": "AYU", "description": "..." }
+    { "code": "AYU", "name": "Ayurveda", "description": "..." }
   ]
 }
 ```
@@ -1058,14 +1064,14 @@ export const STATUS_COLORS = {
 
 | Property | Value |
 | :--- | :--- |
-| Max file size | 5 MB per file (configurable per `DocumentType.maxFileSizeBytes`) |
-| Allowed MIME types | `application/pdf`, `image/jpeg`, `image/png` (configurable per `DocumentType.allowedMimeTypes`) |
+| Max file size | 5 MB by default; configured per document type by `DocumentType.maxSizeMb` |
+| Allowed file formats | `.pdf`, `.jpg`, `.jpeg`, `.png` by default; configured by the comma-separated `DocumentType.allowedFormats` field |
 | Upload field name | `file` |
 | Upload endpoint | `POST /api/applications/:id/documents` |
 | Storage | Local filesystem (Phase 2); cloud storage (future phase) |
-| Path returned | Relative server path in `storagePath`; not a public URL in Phase 2 |
+| Database value | Store a private relative storage reference in `Document.fileUrl`; do not return it as a public URL |
 
-> **Phase 2 storage:** Store uploaded files in `backend/uploads/<applicationId>/` on the server filesystem. Do not expose the raw `storagePath` to the frontend — provide a separate secure download endpoint if needed.
+> **Phase 2 storage:** Store uploaded files in `backend/uploads/<applicationId>/` on the server filesystem. Do not expose the raw storage reference to the frontend — provide a separate secure download endpoint if needed.
 
 ---
 
@@ -1099,7 +1105,7 @@ export const STATUS_COLORS = {
 
 ### Database compatibility rule
 
-This contract is now mapped to the existing database design. Keep database column names, key types, CHECK values, and relationships as defined by `database/schema.sql` and `backend/prisma/schema.prisma`. If a requested API feature cannot be represented by those fields, use an explicitly documented response/request transformation or defer the feature. Do not change the schema to match an older example in this document.
+The proposed mappings in this draft follow the existing database design. Keep database column names, key types, CHECK values, and relationships as defined by `database/schema.sql` and `backend/prisma/schema.prisma`. If a requested API feature cannot be represented by those fields, agree on a response/request transformation or defer the feature. Do not change the schema to match an older example in this document.
 
 ### Schema change protocol
 
@@ -1113,5 +1119,5 @@ If either developer identifies a required schema change after this contract is a
 
 ---
 
-*Database-compatible contract mapping updated 11 November 2026. The existing SQL and Prisma schema remain unchanged; backend serializers translate API wire fields to database columns.*
+*Draft reconciliation prepared 12 November 2026. The existing SQL and Prisma schema remain unchanged. Review these proposed API field changes with both route owners before treating version 1.2 as agreed.*
 

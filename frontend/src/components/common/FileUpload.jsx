@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UploadCloud, File, X, CheckCircle, AlertCircle } from 'lucide-react';
+import { DOCUMENT_ACCEPT, DOCUMENT_MAX_SIZE_BYTES } from '../../utils/documentUpload';
 
 function formatFileSize(bytes) {
   if (bytes === 0) return '0 B';
@@ -18,8 +19,8 @@ const itemVariants = {
 
 export default function FileUpload({
   onFileSelect,
-  accept,
-  maxSize = 10 * 1024 * 1024,
+  accept = DOCUMENT_ACCEPT,
+  maxSize = DOCUMENT_MAX_SIZE_BYTES,
   multiple = false,
   existingFiles = [],
   onRemove,

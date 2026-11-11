@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useApplications } from '../../context/ApplicationContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { ayushDomains, indianStates, incorporationTypes, businessActivities, businessStages, documentCategories } from '../../data/mockData';
+import { DOCUMENT_FORMAT_LABEL, DOCUMENT_MAX_SIZE_MB } from '../../utils/documentUpload';
 import Modal from '../../components/common/Modal';
 import PageTransition from '../../layouts/PageTransition';
 
@@ -412,7 +413,7 @@ export default function NewApplication() {
                       );
                     })}
                   </div>
-                  <p className="text-xs text-text-secondary">Supported formats: PDF, JPG, PNG, DOC. Max file size: 10MB per document.</p>
+                  <p className="text-xs text-text-secondary">Supported formats: {DOCUMENT_FORMAT_LABEL}. Max file size: {DOCUMENT_MAX_SIZE_MB} MB per document.</p>
                 </div>
               )}
 

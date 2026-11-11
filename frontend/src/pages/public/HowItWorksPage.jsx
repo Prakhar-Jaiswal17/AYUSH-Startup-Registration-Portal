@@ -10,6 +10,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import PageTransition from '../../layouts/PageTransition';
+import { DOCUMENT_FORMAT_LABEL, DOCUMENT_MAX_SIZE_MB } from '../../utils/documentUpload';
 
 const steps = [
   {
@@ -33,7 +34,7 @@ const steps = [
     title: 'Submit Required Documents',
     icon: FileUp,
     description:
-      "Upload necessary documents based on your domain and business type. Our smart checklist ensures you don't miss anything. Supported formats include PDF, JPEG, and PNG with a maximum file size of 10 MB per document.",
+      `Upload necessary documents based on your domain and business type. Our smart checklist ensures you don't miss anything. Supported formats include ${DOCUMENT_FORMAT_LABEL} with a maximum file size of ${DOCUMENT_MAX_SIZE_MB} MB per document.`,
     color: 'bg-secondary',
   },
   {

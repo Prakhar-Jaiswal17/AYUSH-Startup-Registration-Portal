@@ -12,6 +12,7 @@ import Modal from '../../components/common/Modal';
 import PageTransition from '../../layouts/PageTransition';
 import { formatDate } from '../../utils/helpers';
 import { mockStartups } from '../../data/mockData';
+import { DOCUMENT_FORMAT_LABEL, DOCUMENT_MAX_SIZE_MB } from '../../utils/documentUpload';
 
 const tabs = ['Overview', 'Documents', 'Timeline', 'Clarification'];
 
@@ -164,7 +165,7 @@ export default function ApplicationDetail() {
                 <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
                   <Upload className="w-8 h-8 text-text-secondary/40 mx-auto mb-2" />
                   <p className="text-sm text-text-secondary">Click to select or drag and drop</p>
-                  <p className="text-xs text-text-secondary/60 mt-1">PDF, JPG, PNG up to 10MB</p>
+                  <p className="text-xs text-text-secondary/60 mt-1">{DOCUMENT_FORMAT_LABEL} up to {DOCUMENT_MAX_SIZE_MB} MB</p>
                 </div>
                 <div className="flex gap-3 justify-end">
                   <button onClick={() => setShowUpload(false)} className="btn-ghost text-sm">Cancel</button>
