@@ -20,8 +20,13 @@ docs/
 ├── database-design.md         # [Phase 2] Relational Schema Design, Attributes, Keys & 3NF Normalization
 ├── database-workflow.md       # [Phase 2] Frontend-to-Database Mapping & Transaction Boundaries
 │
-└── api-contract.md            # [Phase 2 Chunk 3] Agreed HTTP API Contract for frontend-backend integration
+├── api-contract.md            # [Phase 2 Chunk 3] Agreed target HTTP API contract
+└── implementation-status.md   # Verified repository implementation state and integration gaps
 ```
+
+## Current implementation status
+
+The requirement, architecture, ER, database workflow, and API documents describe the intended system. The current code is a frontend prototype with mock-backed contexts, a prepared Axios client, an Express health-check scaffold, and standalone PostgreSQL SQL scripts. It does not yet implement live application APIs or connect Prisma to the SQL schema. See [implementation-status.md](./implementation-status.md) for the verified state, current gaps, and verification results.
 
 ---
 
@@ -49,12 +54,12 @@ docs/
 
 ## ⚙️ Phase 2 — Chunk 2: Relational Schema & PostgreSQL Implementation
 
-The operational PostgreSQL database implementation files reside in the root [`database/`](../database) directory:
+The PostgreSQL DDL, sample data, and query scripts reside in the root [`database/`](../database) directory. They are not currently wired to the Prisma backend:
 
 | File | Description |
 | :--- | :--- |
-| **[`database/schema.sql`](../database/schema.sql)** | Complete PostgreSQL DDL script creating all 11 tables, UUID primary keys, foreign keys with cascade/restrict rules, CHECK constraints, and 16 B-Tree performance indexes. |
-| **[`database/seed.sql`](../database/seed.sql)** | Realistic fictional seed records populating all 11 tables matching frontend demo logins (bcrypt hashed passwords), applications across diverse statuses, and sample documents. |
+| **[`database/schema.sql`](../database/schema.sql)** | PostgreSQL DDL defining 11 tables, keys, foreign keys, CHECK constraints, and indexes. |
+| **[`database/seed.sql`](../database/seed.sql)** | Fictional sample records for the SQL schema, including demo users, applications, and documents. |
 | **[`database/queries.sql`](../database/queries.sql)** | Comprehensive SQL demonstration queries covering CRUD, multi-table INNER/LEFT JOINs, GROUP BY aggregations, CTEs, subqueries, ACID transactions, and Recharts analytics feeds. |
 | **[`database/README.md`](../database/README.md)** | Setup guide, execution order, demo account credentials, and PostgreSQL execution verification. |
 
@@ -64,6 +69,6 @@ The operational PostgreSQL database implementation files reside in the root [`da
 
 | Document | Description |
 | :--- | :--- |
-| **[`api-contract.md`](./api-contract.md)** | Agreed HTTP API contract for frontend-backend integration. Defines base URL, JWT auth, shared enums (Role, ApplicationStatus), Prisma model names and key fields, route ownership table, all endpoint request/response shapes, error codes, frontend status label mapping, file upload spec, and team constraints. Must be agreed before parallel backend/frontend integration work begins. |
+| **[`api-contract.md`](./api-contract.md)** | Agreed target contract for base URL, JWT auth, shared enums, Prisma model fields, route ownership, endpoint shapes, errors, status labels, uploads, and team constraints. The backend endpoints and Prisma models are not implemented yet; see [implementation-status.md](./implementation-status.md) for integration gaps. |
 
 

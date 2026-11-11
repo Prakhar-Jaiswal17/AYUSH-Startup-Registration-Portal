@@ -1,5 +1,7 @@
 # Database Workflow and Data Flow Mapping
 
+This document describes the intended data flow and transaction boundaries; it is not a report of working runtime integrations. Current pages and contexts remain mock-backed, the API wrappers are not consumed, and the backend has no business routes. The sequence below is aligned to the agreed API contract where endpoints are shown. See [implementation-status.md](./implementation-status.md).
+
 ## 1. Overview
 
 This document defines how frontend actions, component state transitions, and user interactions map to database queries, transactions, and state mutations within the **AYUSH Startup Registration Portal**.
@@ -48,11 +50,11 @@ sequenceDiagram
 
     %% Officer Evaluation
     Officer->>UI: Views Assigned Application Queue
-    UI->>API: GET /api/officers/assigned/applications
+    UI->>API: GET /api/officer/applications
     API->>DB: SELECT * FROM applications WHERE status != 'Draft'
     DB-->>API: Applications List
     Officer->>UI: Opens Application APP-2025-XXX
-    UI->>API: PATCH /api/applications/APP-2025-XXX/status (Under Review)
+    UI->>API: PATCH /api/applications/:id/review
     API->>DB: UPDATE applications SET status = 'Under Review', assigned_officer_id = officer_id
     API->>DB: INSERT INTO application_status_history (status: 'Under Review')
 
@@ -63,7 +65,7 @@ sequenceDiagram
     
     alt Discrepancy Found (Query Raised)
         Officer->>UI: Submits Query Notes
-        UI->>API: POST /api/applications/APP-2025-XXX/clarify
+        UI->>API: POST /api/applications/:id/queries
         Note over API,DB: Transaction: Query Generation
         API->>DB: UPDATE applications SET status = 'Clarification Required'
         API->>DB: INSERT INTO clarification_queries (query_text, status: 'Pending')
@@ -74,7 +76,7 @@ sequenceDiagram
         %% Resubmission by Applicant
         Applicant->>UI: Opens Clarification Tab, types response, uploads new docs
         Applicant->>UI: Clicks "Resubmit Application"
-        UI->>API: POST /api/applications/APP-2025-XXX/resubmit
+        UI->>API: POST /api/applications/:id/submit
         Note over API,DB: Transaction: Resubmission
         API->>DB: UPDATE applications SET status = 'Resubmitted'
         API->>DB: UPDATE clarification_queries SET response_text = $response, resolved_at = NOW()
@@ -83,11 +85,11 @@ sequenceDiagram
         Note over API,DB: Committed
     else Full Compliance Verified
         Officer->>UI: Approves Application with Remarks
-        UI->>API: PATCH /api/applications/APP-2025-XXX/status (Approved)
-        Note over API,DB: Transaction: Final Approval
-        API->>DB: UPDATE applications SET status = 'Approved', certificate_number = 'AYUSH-REG-2025-XXXX', certificate_issued_at = NOW()
-        API->>DB: INSERT INTO application_status_history (status: 'Approved', remark: 'Application approved by Ministry')
-        API->>DB: INSERT INTO notifications (userId: applicant_id, title: 'Application Approved! Certificate Issued')
+        UI->>API: PATCH /api/applications/:id/decide (decision: APPROVED)
+        Note over API,DB: Target transaction: record portal outcome
+        API->>DB: UPDATE applications SET status = 'Approved'
+        API->>DB: INSERT INTO application_status_history (status: 'Approved', remark: 'Application approved by portal reviewer')
+        API->>DB: INSERT INTO notifications (userId: applicant_id, title: 'Application review outcome recorded')
         API->>DB: INSERT INTO audit_logs (action: 'Application Approved')
         Note over API,DB: Committed
     end
@@ -133,21 +135,20 @@ To guarantee data consistency across concurrent requests:
    - Dispatch of urgent notification to startup user
    - *Failure behavior*: Rollback; status remains `Under Review`.
 
-3. **Approval & Certificate Generation Transaction**:
+3. **Approval & Portal Outcome Transaction**:
    - Status update (`Under Review` $\rightarrow$ `Approved`)
-   - Generation and assignment of unique `certificate_number`
-   - Setting `certificate_issued_at = CURRENT_TIMESTAMP`
+   - Recording the reviewer decision and any agreed internal portal reference
    - Insertion of approval record into `application_status_history`
    - Insertion of system audit entry into `audit_logs`
-   - *Failure behavior*: Rollback; no orphaned certificate number issued.
+   - *Failure behavior*: Rollback; no partial portal outcome is recorded.
 
 ---
 
-## 6. Implementation Reference (SQL Operations)
+## 6. SQL Query Examples
 
-The transaction and workflow queries are fully implemented and verified in [`database/queries.sql`](../database/queries.sql):
+The following sections in [`database/queries.sql`](../database/queries.sql) illustrate the target transactions and query patterns. Their execution against a live database has not been verified in the current project state:
 - **Submission Workflow**: Section 6.1 (`BEGIN ... UPDATE applications ... INSERT INTO application_status_history ... COMMIT;`).
 - **Clarification Cycle**: Section 1.3 & 7.2 (`INSERT INTO clarification_queries ... UPDATE applications SET status = 'Clarification Required'`).
-- **Adjudication & Certification**: Section 6.2 (Atomic approval transaction assigning `certificate_number` and audit log).
+- **Adjudication & Portal Outcome**: Section 6.2 (Atomic approval transaction and audit log; any reference is internal and non-statutory).
 - **Admin Dashboard Feed**: Section 8 (Aggregated monthly registration trends and domain distributions for Recharts).
 

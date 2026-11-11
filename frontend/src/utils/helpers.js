@@ -76,12 +76,6 @@ export function truncate(str, length = 50) {
   return str.length > length ? str.substring(0, length) + '...' : str;
 }
 
-export function generateAppId() {
-  const year = new Date().getFullYear();
-  const random = Math.floor(Math.random() * 900 + 100);
-  return `APP-${year}-${random}`;
-}
-
 export function cn(...classes) {
   return classes.filter(Boolean).join(' ');
 }

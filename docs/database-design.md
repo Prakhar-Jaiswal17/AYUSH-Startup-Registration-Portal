@@ -1,5 +1,7 @@
 # Relational Database Design Specification
 
+This document records the target relational design and the separate SQL-script implementation. It is not the current Prisma model: `backend/prisma/schema.prisma` has no models. See [implementation-status.md](./implementation-status.md) for verified implementation and alignment gaps.
+
 ## 1. Executive Summary & Design Principles
 
 This document specifies the relational database design for the **AYUSH Startup Registration Portal**, developed in accordance with **Database Management Systems (DBMS)** and **Advanced Software Development (ASD)** principles.
@@ -23,7 +25,7 @@ The initial candidate entities were analyzed against the frontend architecture, 
 | **Startup** | `startups` | Retained | Stores corporate entity information (CIN, brand, incorporation date, state) separate from individual application submissions. |
 | **Founder** | `founders` | Retained | Normalized into a 1:N table to eliminate multivalued founder arrays from `startups` (1NF compliance). |
 | **Category** | `ayush_categories` & `document_types` | Expanded | Separated into two master lookup tables: one for the 5 AYUSH streams and another for compliance document types, supporting admin master data management (`AdminCategories.jsx`). |
-| **Application** | `applications` | Retained | Core workflow entity tracking submission lifecycle, assigned officer, AYUSH stream, and certification data. |
+| **Application** | `applications` | Retained | Core workflow entity tracking submission lifecycle, assigned officer, AYUSH stream, and any agreed internal portal acknowledgement reference. |
 | **Document** | `documents` | Retained | Stores metadata, secure storage URLs, file sizes, and individual reviewer verification outcomes for uploaded compliance files. |
 | **Review** & **StatusHistory** | `application_status_history` | Combined | Rather than creating a detached review entity, review decisions manifest as status transitions with remarks, officer stamps, and timestamps. This mirrors the frontend `<Timeline>` model directly. |
 | **Query** | `clarification_queries` | Retained | Explicitly tracks clarification requests raised by officers and responses provided by applicants during the `Clarification Required` state. |
@@ -143,8 +145,8 @@ The central workflow entity tracking individual registration submissions.
 | `assigned_officer_id`| `UUID` | **FK** to `users(id)`, Nullable | Officer evaluating application. Set to NULL on officer deletion. |
 | `regulatory_details`| `JSONB` | Default `'{}'` | Step 4 data: manufacturing facility, drug license numbers, clinical approvals. |
 | `business_details_snapshot`| `JSONB` | Default `'{}'` | Immutable snapshot of business data at the time of submission. |
-| `certificate_number`| `VARCHAR(100)` | **Unique**, Nullable | Formal AYUSH Certificate ID (e.g., `'AYUSH-REG-2025-0012'`). |
-| `certificate_issued_at`| `TIMESTAMP WITH TIME ZONE` | Nullable | Timestamp when official certificate was generated. |
+| `certificate_number`| `VARCHAR(100)` | **Unique**, Nullable | Legacy SQL field. If retained, it may identify only an internal portal acknowledgement; it must not imply a statutory AYUSH license, regulatory approval, or legal certification. |
+| `certificate_issued_at`| `TIMESTAMP WITH TIME ZONE` | Nullable | Legacy SQL field for the time an internal portal acknowledgement is recorded, if that feature is agreed. |
 | `submitted_at` | `TIMESTAMP WITH TIME ZONE` | Nullable | Timestamp when applicant transitioned status from Draft to Submitted. |
 | `last_updated` | `TIMESTAMP WITH TIME ZONE` | Default `CURRENT_TIMESTAMP` | Last status or data modification timestamp. |
 | `created_at` | `TIMESTAMP WITH TIME ZONE` | Default `CURRENT_TIMESTAMP` | Application draft initialization timestamp. |
@@ -257,15 +259,19 @@ Immutable log of system-wide administrative, security, and lifecycle actions for
 
 ---
 
-## 5. PostgreSQL Implementation & Verification (Phase 2, Chunk 2)
+## 5. PostgreSQL SQL Scripts (Phase 2, Chunk 2)
 
-The relational schema has been implemented in PostgreSQL SQL scripts located in the root `database/` directory:
-- **`database/schema.sql`**: Production DDL creating all 11 tables with explicit primary keys (`UUID` / `VARCHAR`), foreign keys with cascade rules, NOT NULL, UNIQUE, CHECK constraints, and 16 performance indexes.
-- **`database/seed.sql`**: Sample data script providing verified data across all 11 tables matching the frontend demo logins (`startup@ayushsetu.demo`, `officer@ayushsetu.demo`, `admin@ayushsetu.demo` with bcrypt password hashes).
+The root `database/` directory contains PostgreSQL scripts. The database README reports testing them on PostgreSQL 18.6; this review did not rerun them. They are not connected to the current Prisma schema:
+- **`database/schema.sql`**: DDL defining 11 tables with primary keys (`UUID` / `VARCHAR`), foreign keys, constraints, and indexes.
+- **`database/seed.sql`**: Fictional sample data for the SQL tables, including demo logins and application records.
 - **`database/queries.sql`**: Demonstrates CRUD, multi-table JOINs, GROUP BY aggregations, CTEs, subqueries, and ACID transactions.
 - **`database/README.md`**: Complete execution instructions and verification guide.
 
-### Implemented Table Structure Summary
+### Differences from the agreed API contract
+
+The SQL scripts and API contract currently describe different interfaces. In SQL, `applications.id` is the formatted tracking number; the contract expects a UUID `id` and a separate `trackingNumber`. SQL roles/statuses use lowercase/title-case values, while the contract uses uppercase roles and snake-case status enums. SQL category and document-type keys are codes; the contract expects UUID IDs. Resolve these differences with the backend owner before generating Prisma models or wiring live API calls. Do not change the agreed contract unilaterally.
+
+### SQL Script Table Structure Summary
 
 | Table | Primary Key | Foreign Keys | Key Constraints & Indexes |
 | :--- | :--- | :--- | :--- |

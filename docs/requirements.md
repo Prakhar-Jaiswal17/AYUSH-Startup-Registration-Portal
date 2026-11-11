@@ -4,6 +4,8 @@
 
 The **AYUSH Startup Registration Portal** is a centralized digital platform developed to streamline, accelerate, and standardize the registration and regulatory compliance process for startups operating within the AYUSH sector (**A**yurveda, **Y**oga & Naturopathy, **U**nani, **S**iddha, and **H**omoeopathy).
 
+These are target requirements for an academic application-processing portal, not a list of completed features. See [implementation-status.md](./implementation-status.md) for the current repository state. The portal records application outcomes; it does not issue statutory AYUSH licenses, regulatory approvals, or certifications with legal force.
+
 Under the initiative of the Ministry of AYUSH and the All India Institute of Ayurveda (AIIA), this portal bridges the gap between emerging innovators, regulatory authorities, and administrative bodies. It addresses existing bottlenecks such as opaque manual paperwork, decentralized workflows, delayed verifications, and fragmented tracking mechanisms.
 
 ---
@@ -76,7 +78,7 @@ To deliver a reliable and maintainable system within the timeline of the Advance
 - **FR-4.2**: Reviewers shall be able to open an application, view all entered data, and inspect attached documents side-by-side.
 - **FR-4.3**: Reviewers shall be able to change application status to:
   - `Under Review`: Reviewer has started evaluation.
-  - `Approved`: Application meets all regulatory criteria.
+  - `Approved`: Application meets the portal's application review criteria. This outcome is not a statutory license or regulatory approval.
   - `Rejected`: Application fails compliance criteria (rejection reason mandatory).
   - `Query Raised`: Discrepancies or missing information flagged (detailed notes mandatory).
 
@@ -86,11 +88,11 @@ To deliver a reliable and maintainable system within the timeline of the Advance
 - **FR-5.3**: The applicant shall be provided an interface to write an explanatory response and upload replacement or supplementary documents.
 - **FR-5.4**: Upon applicant resubmission, the application status shall transition to `Resubmitted` and return to the reviewer's queue with a complete audit trail.
 
-### FR-6: Status Tracking, Notifications & Certification
+### FR-6: Status Tracking, Notifications & Portal Acknowledgement
 - **FR-6.1**: The applicant dashboard shall provide a live visual progress bar and timeline displaying all status changes and timestamps.
 - **FR-6.2**: The system shall record status history in an audit trail table (previous status, new status, changed by, timestamp, comments).
-- **FR-6.3**: Upon approval, the system shall issue an official AYUSH Startup Certificate with an assigned Registration ID and verification QR code/details.
-- **FR-6.4**: The applicant shall be able to download the formal digital certificate in PDF format.
+- **FR-6.3**: Upon approval, the portal may record an internal application outcome or portal acknowledgement. Any reference number or document must be explicitly described as a portal record and must not imply statutory AYUSH licensing, regulatory approval, or government certification.
+- **FR-6.4**: A downloadable portal acknowledgement may be added if included in the agreed project scope. It must not be presented as a statutory certificate.
 
 ### FR-7: Administrative Oversight & Analytics
 - **FR-7.1**: Administrators shall have access to aggregated metrics:

@@ -92,10 +92,13 @@ export function ApplicationProvider({ children }) {
   }, [documents]);
 
   const createApplication = useCallback((applicationData) => {
-    const newId = `APP-${new Date().getFullYear()}-${String((applications || []).length + 1).padStart(3, '0')}`;
+    const localId = globalThis.crypto?.randomUUID?.()
+      || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const newId = `mock-${localId}`;
     const newApp = {
       id: newId,
       ...applicationData,
+      trackingNumber: applicationData.trackingNumber || null,
       status: applicationData.status || 'Draft',
       submittedAt: applicationData.status === 'Submitted' ? new Date().toISOString() : null,
       lastUpdated: new Date().toISOString(),
