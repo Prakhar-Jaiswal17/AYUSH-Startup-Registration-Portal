@@ -1,8 +1,8 @@
 # API Contract — AYUSH Startup Registration Portal
 
-> **Document version:** 1.0  
-> **Phase:** Phase 2 — Chunk 3 (Agreed target contract)
-> **Status:** Agreed — do not change shared sections without team consensus
+> **Document version:** 1.1
+> **Phase:** Phase 2 — Chunk 4 (API contract aligned to the existing PostgreSQL schema)
+> **Status:** Database mapping updated 11 November 2026; API aliases must follow the mappings below. This does not change the SQL or Prisma schema.
 
 This contract is the single source of truth for all HTTP API communication between the React frontend and the Express backend. Both Prakhar (backend) and the teammate (frontend integration + officer/review routes) must follow this document exactly.
 
@@ -15,7 +15,7 @@ This contract is the single source of truth for all HTTP API communication betwe
 3. [Shared Enums](#3-shared-enums)
 4. [Response Shape](#4-response-shape)
 5. [Pagination Shape](#5-pagination-shape)
-6. [Prisma Model Names & Key Fields](#6-prisma-model-names--key-fields)
+6. [Database Model Names & Key Fields](#6-database-model-names--key-fields)
 7. [Route Ownership](#7-route-ownership)
 8. [Auth Routes](#8-auth-routes-prakhar)
 9. [Startup Profile Routes](#9-startup-profile-routes-prakhar)
@@ -83,39 +83,45 @@ Authorization: Bearer <token>
 
 ## 3. Shared Enums
 
+The HTTP API may use the stable uppercase values below. Before querying or writing PostgreSQL, the backend must translate them to the stored values in the mapping tables below. Prisma fields are strings; the database CHECK constraints accept only the stored values. Do not pass API enum values directly into Prisma.
+
 ### Role Enum
 
-Used in `users.role` and `req.user.role`.
+Used in API responses and `req.user.role`. Store the lowercase representation in `users.role` and `audit_logs.actor_role`.
+The database additionally permits `system` as an audit actor role; it is internal-only and is not a login/user role.
 
-| Canonical value (backend/DB) | Description |
-| :--- | :--- |
-| `STARTUP` | Startup applicant user |
-| `OFFICER` | Government reviewer / AYUSH officer |
-| `ADMIN` | Portal administrator |
+| API value | PostgreSQL value | Description |
+| :--- | :--- | :--- |
+| `STARTUP` | `startup` | Startup applicant user |
+| `OFFICER` | `officer` | Government reviewer / AYUSH officer |
+| `ADMIN` | `admin` | Portal administrator |
 
 ### Application Status Enum
 
-Used in `applications.status`, `application_status_history`, API bodies, and query params.
+Used in API bodies and query parameters. Store the title-case PostgreSQL value in `applications.status`, `application_status_history.status`, and `application_status_history.previous_status`.
 
-| Canonical value (backend/DB) | Frontend display label |
-| :--- | :--- |
-| `DRAFT` | Draft |
-| `SUBMITTED` | Submitted |
-| `UNDER_REVIEW` | Under Review |
-| `QUERY_RAISED` | Clarification Required |
-| `RESUBMITTED` | Resubmitted |
-| `APPROVED` | Approved |
-| `REJECTED` | Rejected |
+| API value | PostgreSQL value | Frontend display label |
+| :--- | :--- | :--- |
+| `DRAFT` | `Draft` | Draft |
+| `SUBMITTED` | `Submitted` | Submitted |
+| `UNDER_REVIEW` | `Under Review` | Under Review |
+| `QUERY_RAISED` | `Clarification Required` | Clarification Required |
+| `RESUBMITTED` | `Resubmitted` | Resubmitted |
+| `APPROVED` | `Approved` | Approved |
+| `REJECTED` | `Rejected` | Rejected |
 
 > **Rule:** Backend always sends and receives canonical SNAKE_CASE values. Frontend maps them to display labels for rendering only. See [Section 18](#18-frontend-status-label-mapping).
 
-### Document Verification Status Enum
+### Document Status Enum
 
-| Canonical value | Description |
-| :--- | :--- |
-| `PENDING` | Not yet reviewed |
-| `VERIFIED` | Officer has verified the document |
-| `REJECTED` | Officer has rejected the document |
+| API value | PostgreSQL value | Description |
+| :--- | :--- | :--- |
+| `UPLOADED` | `Uploaded` | Uploaded and awaiting review |
+| `PENDING_VERIFICATION` | `Pending Verification` | Explicitly queued for review |
+| `VERIFIED` | `Verified` | Officer has verified the document |
+| `REJECTED` | `Rejected` | Officer has rejected the document |
+
+Clarification query `status` is `PENDING` or `RESOLVED` in the API and `Pending` or `Resolved` in PostgreSQL. Document type `category` is one of `incorporation`, `regulatory`, `clinical`, `financial`, or `other` in both API and database.
 
 ---
 
@@ -179,143 +185,29 @@ Endpoints that return lists support optional query params `page` (default `1`) a
 
 ---
 
-## 6. Prisma Model Names & Key Fields
+## 6. Database Model Names & Key Fields
 
-Prakhar defines the Prisma schema. These are the agreed model names and critical shared fields that both sides must reference consistently.
+These are the existing Prisma models and physical PostgreSQL fields. They are authoritative for persistence. API names shown in other sections are wire-format aliases only and must be mapped to these fields. Do not add columns or change keys to accommodate an API example.
 
-### `User`
-| Field | Type | Notes |
+### Physical models and API mapping
+
+| Model | Database fields and constraints | API implications |
 | :--- | :--- | :--- |
-| `id` | `String` (UUID) | PK, `@default(uuid())` |
-| `email` | `String` | Unique |
-| `passwordHash` | `String` | Never sent to frontend |
-| `name` | `String` | Full name |
-| `role` | `Role` (enum) | `STARTUP \| OFFICER \| ADMIN` |
-| `phone` | `String?` | Optional |
-| `isActive` | `Boolean` | `@default(true)` |
-| `createdAt` | `DateTime` | `@default(now())` |
+| `User` | UUID `id`; `email`, `passwordHash`, `fullName`, `role`, optional `phone`, `avatarUrl`, `designation`, `department`, `assignedStates`, timestamps. `role` stores lowercase values. | API `name` maps to `fullName`; `role` maps through Section 3. There is no `isActive` column, so account activation/deactivation is not supported by this schema. |
+| `AyushCategory` | `code` is the primary key; `name` is unique; `description`, `regulatoryAuthority`, `isActive`, `createdAt`. | Use `categoryCode`/`ayushDomain` as the key, not a UUID `categoryId`. |
+| `DocumentType` | `code` is the primary key; `name`, constrained `category`, comma-separated `allowedFormats`, positive `maxSizeMb`, `isMandatory`. | Use `documentTypeCode`; derive accepted extensions and max bytes from these fields. There is no UUID ID, description, allowed MIME type array, or per-file byte-limit column. |
+| `Startup` | UUID `id`; unique `userId`; `legalName`, `brandName`, incorporation details, registration number, official email, website, `ayushDomain` FK to category code, arrays `businessActivities`/`existingLicences`, description/products/stage/market, operational status, state/city, DPIIT fields, timestamps. | One profile belongs to one user. API must use these fields or explicitly map `startupName` to both name fields under a documented product rule. |
+| `Founder` | UUID `id`; `startupId` FK; required name, designation, email, phone, qualification; `isPrimary`; `createdAt`. | Founders belong to the startup profile, not an application. No applicationId, DIN, or shareholding is stored. |
+| `Application` | String `id` primary key in `APP-YYYY-NNN` format; `startupId`; `ayushDomain` FK to category code; stored status; required state; optional assigned officer; JSONB `regulatoryDetails` and `businessDetailsSnapshot`; legacy nullable certificate fields; submitted/created/lastUpdated timestamps. | `id` itself is the tracking number. Do not expose a UUID application id or create a second stored tracking-number field; an identical API alias is optional. Review/decision timestamps and officer remarks are not application columns; use status history for remarks/timing. |
+| `Document` | UUID `id`; optional application FK; required startup FK; optional `documentTypeCode`; `name`, `fileName`, `fileUrl`, string `fileSize`, `mimeType`, stored status, remark, optional verifier/timestamp, `uploadedAt`. | No uploadedBy column. Store the byte count as a decimal string in `fileSize`; API `fileSizeBytes` is parsed from it. `fileUrl` must be a private storage reference and must not be returned as a public URL. |
+| `ApplicationStatusHistory` | UUID `id`; application FK; nullable `previousStatus`; required `status`, `remark`; optional `officerName` and `actorId`; `createdAt`. | Use `status` (not `newStatus`) in persistence. Actor FK is nullable; `remark` is required. |
+| `ClarificationQuery` | UUID `id`; application FK; required `officerId`, `queryText`; nullable `responseText`; stored `status` (`Pending`/`Resolved`); `createdAt`, nullable `resolvedAt`. | Map `applicantResponse` to `responseText`. There is no `responseSubmittedAt`; resolution time is distinct. |
+| `Notification` | UUID `id`; `userId`; title/message/type; nullable `applicationId` (the formatted string key); `isRead`; `createdAt`. | Application references use the tracking-number string. |
+| `AuditLog` | UUID `id`; nullable actor FK; required `actorName`, constrained `actorRole`, action, `targetEntity`, string `targetId`, text `details`, optional IP, `createdAt`. | Map `entityType`/`entityId`/`metadata` only if serialized into these existing fields. Do not assume a JSON metadata column. |
 
-### `Startup`
-| Field | Type | Notes |
-| :--- | :--- | :--- |
-| `id` | `String` (UUID) | PK |
-| `userId` | `String` | FK → `User.id`, unique (1:1) |
-| `startupName` | `String` | |
-| `registrationNumber` | `String?` | |
-| `incorporationDate` | `DateTime?` | |
-| `website` | `String?` | |
-| `description` | `String?` | |
-| `createdAt` | `DateTime` | |
+The following earlier contract fields have no persistence column and must not be treated as stored: `User.isActive`; application `reviewStartedAt`, `decidedAt`, and `officerRemarks`; founder `applicationId`, `dinNumber`, and `shareholding`; document `uploadedById`; query `responseSubmittedAt`; and all `Resource` records. The resource endpoints must serve static/configured content unless a future database change is agreed. `certificateNumber` is legacy data only and must never be represented as an AYUSH license, statutory approval, or government certification issued by this portal.
 
-### `Application`
-| Field | Type | Notes |
-| :--- | :--- | :--- |
-| `id` | `String` (UUID) | PK |
-| `trackingNumber` | `String` | Unique, format `APP-YYYY-NNN` |
-| `startupId` | `String` | FK → `Startup.id` |
-| `categoryId` | `String` | FK → `AyushCategory.id` |
-| `assignedOfficerId` | `String?` | FK → `User.id`, nullable |
-| `status` | `ApplicationStatus` (enum) | Default `DRAFT` |
-| `submittedAt` | `DateTime?` | Set on `SUBMITTED` |
-| `reviewStartedAt` | `DateTime?` | Set on `UNDER_REVIEW` |
-| `decidedAt` | `DateTime?` | Set on `APPROVED` / `REJECTED` |
-| `officerRemarks` | `String?` | Officer's final remarks |
-| `createdAt` | `DateTime` | |
-| `updatedAt` | `DateTime` | |
-
-> **Tracking number generation** is the backend's responsibility. The frontend must display the returned `trackingNumber` and must not generate one locally. The obsolete client generator has been removed; the current demo uses an internal mock record ID only.
-
-### `Founder`
-| Field | Type | Notes |
-| :--- | :--- | :--- |
-| `id` | `String` (UUID) | PK |
-| `applicationId` | `String` | FK → `Application.id` |
-| `name` | `String` | |
-| `designation` | `String` | |
-| `email` | `String` | |
-| `phone` | `String?` | |
-| `dinNumber` | `String?` | Director Identification Number |
-| `shareholding` | `Decimal?` | Percentage |
-
-### `Document`
-| Field | Type | Notes |
-| :--- | :--- | :--- |
-| `id` | `String` (UUID) | PK |
-| `applicationId` | `String` | FK → `Application.id` |
-| `documentTypeId` | `String` | FK → `DocumentType.id` |
-| `uploadedById` | `String` | FK → `User.id` |
-| `verifiedById` | `String?` | FK → `User.id`, nullable |
-| `fileName` | `String` | Original filename |
-| `storagePath` | `String` | Server path or URL |
-| `mimeType` | `String` | |
-| `fileSizeBytes` | `Int` | |
-| `verificationStatus` | `DocumentVerificationStatus` (enum) | Default `PENDING` |
-| `verificationRemarks` | `String?` | |
-| `uploadedAt` | `DateTime` | |
-
-### `ApplicationStatusHistory`
-| Field | Type | Notes |
-| :--- | :--- | :--- |
-| `id` | `String` (UUID) | PK |
-| `applicationId` | `String` | FK → `Application.id` |
-| `previousStatus` | `ApplicationStatus?` | Null for first entry |
-| `newStatus` | `ApplicationStatus` | |
-| `changedById` | `String` | FK → `User.id` |
-| `remarks` | `String?` | |
-| `createdAt` | `DateTime` | |
-
-### `ClarificationQuery`
-| Field | Type | Notes |
-| :--- | :--- | :--- |
-| `id` | `String` (UUID) | PK |
-| `applicationId` | `String` | FK → `Application.id` |
-| `raisedById` | `String` | FK → `User.id` (officer) |
-| `queryText` | `String` | Officer's question |
-| `applicantResponse` | `String?` | Startup's answer, nullable |
-| `responseSubmittedAt` | `DateTime?` | |
-| `isResolved` | `Boolean` | Default `false` |
-| `createdAt` | `DateTime` | |
-
-### `Notification`
-| Field | Type | Notes |
-| :--- | :--- | :--- |
-| `id` | `String` (UUID) | PK |
-| `userId` | `String` | FK → `User.id` |
-| `applicationId` | `String?` | FK → `Application.id`, nullable |
-| `title` | `String` | |
-| `message` | `String` | |
-| `type` | `String` | e.g. `STATUS_CHANGE`, `QUERY_RAISED`, `DOCUMENT_VERIFIED` |
-| `isRead` | `Boolean` | Default `false` |
-| `createdAt` | `DateTime` | |
-
-### `AuditLog`
-| Field | Type | Notes |
-| :--- | :--- | :--- |
-| `id` | `String` (UUID) | PK |
-| `actorId` | `String` | FK → `User.id` |
-| `action` | `String` | e.g. `APPLICATION_SUBMITTED`, `STATUS_CHANGED` |
-| `entityType` | `String` | e.g. `Application`, `Document` |
-| `entityId` | `String` | UUID of the affected entity |
-| `metadata` | `Json?` | Freeform context (before/after values, etc.) |
-| `createdAt` | `DateTime` | |
-
-### `AyushCategory`
-| Field | Type | Notes |
-| :--- | :--- | :--- |
-| `id` | `String` (UUID) | PK |
-| `name` | `String` | Unique, e.g. "Ayurveda" |
-| `code` | `String` | Unique short code, e.g. "AYU" |
-| `description` | `String?` | |
-
-### `DocumentType`
-| Field | Type | Notes |
-| :--- | :--- | :--- |
-| `id` | `String` (UUID) | PK |
-| `name` | `String` | Unique |
-| `description` | `String?` | |
-| `isRequired` | `Boolean` | Default `true` |
-| `allowedMimeTypes` | `String[]` | e.g. `["application/pdf", "image/jpeg"]` |
-| `maxFileSizeBytes` | `Int` | Default `5242880` (5 MB) |
+> **Tracking number generation:** The backend generates the `Application.id` in the database's required `APP-YYYY-NNN` format. The response may expose this same value as `id` and/or a convenience `trackingNumber` alias, but there is only one stored identifier. Use that string as the application ID in every route and foreign key.
 
 ---
 
@@ -431,7 +323,7 @@ Register a new startup user account.
 }
 ```
 
-**Errors:** `401` for invalid credentials, `403` if `isActive = false`.
+**Errors:** `401` for invalid credentials. This schema has no account-active flag, so do not implement an `isActive` check.
 
 ---
 
@@ -451,7 +343,6 @@ Get the authenticated user's profile.
     "email": "riya@example.com",
     "role": "STARTUP",
     "phone": "9876543210",
-    "isActive": true,
     "createdAt": "2025-01-15T10:30:00.000Z"
   }
 }
@@ -621,7 +512,8 @@ Get full application details.
       {
         "previousStatus": null,
         "newStatus": "DRAFT",
-        "changedBy": "Riya Sharma",
+        "remark": "Draft created",
+        "changedBy": { "id": "uuid", "name": "Riya Sharma" },
         "createdAt": "2025-11-01T10:00:00.000Z"
       }
     ],
@@ -731,7 +623,7 @@ Upload a document for an application.
 }
 ```
 
-**Errors:** `413` if file exceeds `maxFileSizeBytes` for the document type. `415` for unsupported MIME type.
+**Errors:** `413` if file exceeds `maxFileSizeBytes` for the document type. `415` if MIME type is not in `allowedMimeTypes`.
 
 ---
 
@@ -757,7 +649,9 @@ Officer verifies or rejects a document.
 }
 ```
 
-**Success `200`:** Updated document object.
+`remark` maps to `documents.remark`.
+
+**Success `200`:** Updated document object. API `status` is translated to the stored value in `documents.status`.
 
 ---
 
@@ -916,6 +810,8 @@ Officer approves or rejects an application.
 }
 ```
 
+`remark` is saved to `application_status_history.remark`; the schema has no application-level officer remarks field.
+
 | `decision` value | Resulting status |
 | :--- | :--- |
 | `APPROVED` | `APPROVED` |
@@ -929,13 +825,12 @@ Officer approves or rejects an application.
     "id": "uuid",
     "trackingNumber": "APP-2025-007",
     "status": "APPROVED",
-    "officerRemarks": "All documents verified...",
-    "decidedAt": "2025-11-12T10:00:00.000Z"
+    "officerRemarks": "All documents verified..."
   }
 }
 ```
 
-**Notes:** Backend records status history, creates notification to startup. For `APPROVED`, backend may generate a portal recognition reference number (stored in `metadata` or a dedicated field — Prakhar to decide and document the field name in an amendment to this contract before implementation).
+**Notes:** Backend records status history and creates notification to startup. For `APPROVED`, backend may generate a portal recognition reference number (stored in `metadata` or a dedicated field — Prakhar to decide and document the field name in an amendment to this contract before implementation).
 
 ---
 
@@ -1065,7 +960,7 @@ Activate or deactivate a user account.
 
 ## 16. Resource Routes (Teammate)
 
-Resources are publicly accessible guides and FAQs (read-only for non-admins).
+Resources are publicly accessible guides and FAQs (read-only for non-admins). There is no `Resource` model/table in the existing SQL or Prisma schema. These endpoints must read static/configured content and must not attempt Prisma CRUD against a nonexistent table.
 
 ### `GET /api/resources`
 
@@ -1196,23 +1091,27 @@ export const STATUS_COLORS = {
 ### Frontend implementation status
 
 - The API client wrappers are prepared against the endpoint shapes in this document, but no screen or context currently calls them.
-- The client-side `generateAppId()` helper was removed. The local demo uses an internal `mock-…` record ID and leaves `trackingNumber` empty; only the backend may generate the contract tracking number.
+- The client-side `generateAppId()` helper was removed. The local demo uses an internal `mock-…` record ID and leaves `trackingNumber` empty; only the backend may generate the database application ID in the required formatted string.
 - Native `alert()` feedback was removed from `NewApplication.jsx` and replaced with inline feedback. Other prototype pages may still contain placeholder alerts.
 - `AuthContext`, `ApplicationContext`, and `NotificationContext` remain mock-backed until the backend endpoints are implemented.
-- The seven-step form keeps its complete data in the local demo record. The current request example does not define all collected form fields, and the form's mock category slug is not the UUID `categoryId` required here. Resolve this gap with the team before sending a live create request; do not extend the agreed shape unilaterally.
+- The seven-step form keeps its complete data in the local demo record. Map its category selection to the database category `code`; application-specific regulatory and business answers belong in JSONB `regulatoryDetails` and `businessDetailsSnapshot`. Founder records belong to the startup profile and cannot hold application-specific founder snapshots in this schema.
 - See [implementation-status.md](./implementation-status.md) for backend readiness and SQL/Prisma alignment gaps.
+
+### Database compatibility rule
+
+This contract is now mapped to the existing database design. Keep database column names, key types, CHECK values, and relationships as defined by `database/schema.sql` and `backend/prisma/schema.prisma`. If a requested API feature cannot be represented by those fields, use an explicitly documented response/request transformation or defer the feature. Do not change the schema to match an older example in this document.
 
 ### Schema change protocol
 
 If either developer identifies a required schema change after this contract is agreed:
 
-1. Raise the change in a team discussion (WhatsApp / meeting).
-2. The teammate requests the change in a written note to Prakhar.
-3. Prakhar updates `prisma/schema.prisma` and runs the migration.
-4. Both developers update this document in the same commit.
+1. Raise the change in a team discussion.
+2. Agree on the database design change before implementation.
+3. Update `database/schema.sql`, `backend/prisma/schema.prisma`, and the Prisma migration history together.
+4. Update this API contract and related documentation with the same change.
 5. No unilateral schema changes.
 
 ---
 
-*Contract shapes last agreed during Phase 2 — Chunk 3. Frontend implementation status reviewed 11 November 2026; no shared endpoint or model shape was changed in this review.*
+*Database-compatible contract mapping updated 11 November 2026. The existing SQL and Prisma schema remain unchanged; backend serializers translate API wire fields to database columns.*
 

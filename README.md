@@ -22,6 +22,8 @@ The **AYUSH Startup Registration Portal** solves this by offering a centralized 
 
 All Phase 1 and Phase 2 requirement analysis, workflows, technical architectural specifications, and database designs are maintained in the [`docs/`](./docs) directory (see [`docs/README.md`](./docs/README.md) for index):
 
+Database setup and migration instructions are in [`database/README.md`](./database/README.md). The Prisma schema and migration history live in `backend/prisma/`; commit these migration files so teammates and deployments can reproduce the PostgreSQL schema. Keep `.env` files and database credentials out of Git.
+
 ### Phase 1: Requirements & Architecture
 | Document | Description |
 | :--- | :--- |
@@ -33,7 +35,7 @@ All Phase 1 and Phase 2 requirement analysis, workflows, technical architectural
 | **[`docs/tech-stack.md`](./docs/tech-stack.md)** | Project stack: Vite, React, JavaScript, Express, PostgreSQL, and Prisma. |
 | **[`docs/architecture.md`](./docs/architecture.md)** | High-level 3-tier system architecture, component interactions, security model, and Mermaid architecture & sequence diagrams. |
 
-### Phase 2: Database Design (Chunk 1)
+### Phase 2: Database Design and Backend Preparation
 | Document | Description |
 | :--- | :--- |
 | **[`docs/ER-diagram.md`](./docs/ER-diagram.md)** | Complete Mermaid ER diagram showing all 11 finalized database entities, keys, relationships, and cardinalities. |
@@ -91,6 +93,9 @@ stateDiagram-v2
 AYUSH-Startup-Registration-Portal/
 ├── frontend/
 ├── backend/
+│   └── prisma/
+│       ├── schema.prisma
+│       └── migrations/      # Versioned PostgreSQL schema changes (commit these)
 ├── README.md
 ├── frontend/
 ├── database/
@@ -131,9 +136,13 @@ AYUSH-Startup-Registration-Portal/
   - Realistic seed data matching frontend demo users and applications (`seed.sql`)
   - Comprehensive DBMS query suite covering CRUD, JOINs, aggregations, CTEs, and transactions (`queries.sql`)
   - Live execution and constraint enforcement verification on PostgreSQL 18+
-- [ ] **Phase 2 — Chunk 3: Prisma ORM Integration & Backend Foundation**
-  - Prisma schema definition (`schema.prisma`) matching PostgreSQL relational schema
-  - Prisma Client generation & database introspection
+- [x] **Phase 2 — Chunk 3: Prisma Schema & PostgreSQL Migrations**
+  - Prisma models mapped to the 11 tables in the PostgreSQL design
+  - Versioned initial schema and CHECK-constraint migrations
+  - Prisma Client generated and migrations applied to the configured development database
+- [ ] **Phase 2 — Chunk 4: Backend Integration**
+  - Connect Express routes and services to Prisma Client
+  - Implement and integrate authentication and application workflows
 - [ ] **Phase 3: Core Implementation**
   - Authentication & session management (Express REST API)
   - Multi-step application wizard & file uploads

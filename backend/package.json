@@ -4,6 +4,10 @@
   "description": "",
   "main": "src/server.js",
   "scripts": {
+    "db:validate": "prisma validate",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:status": "prisma migrate status",
     "dev": "nodemon src/server.js",
     "start": "node src/server.js"
   },
