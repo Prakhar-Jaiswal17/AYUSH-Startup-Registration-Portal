@@ -8,6 +8,7 @@
 | Area | Implemented now | Not implemented or not verified |
 |---|---|---|
 | Frontend | React 19/Vite portal screens for public, startup, officer, and admin roles; client-side routes; demo login; seven-step application prototype; status badge and timeline mapping. | Pages are not connected to backend APIs. Client-side route guards are for demo navigation and do not enforce security. |
+| Desktop app | Electron launcher in `desk_App/` starts the existing Vite frontend and loads it in a native desktop window. It reuses the same React routes, demo accounts, mock data, and browser-storage behavior; context isolation is enabled and Node integration is disabled. | Requires Node/npm, Electron installed in `desk_App/`, and frontend dependencies installed. This is a development launcher, not a packaged installer. It does not add a separate desktop-only workflow or live backend integration. |
 | API client | Axios base URL from `VITE_API_URL` with `http://localhost:3005/api` fallback; Bearer-token request interceptor; centralized error-message helper; wrappers prepared against `api-contract.md`. | The wrappers have no screen/context consumers yet. `AuthContext` does not store a backend token. |
 | Frontend state | `AuthContext`, `ApplicationContext`, and `NotificationContext` still use mock data and browser storage. The new-application demo keeps the full form snapshot locally and uses an internal `mock-…` record ID. | No server-generated tracking number is available in the demo. The UI explicitly does not display a fabricated one. |
 | Backend | CommonJS Express scaffold listens on port 3005, enables CORS/JSON parsing, and exposes `GET /api/health`. | Authentication middleware and business route files are absent. No live API workflow is implemented. |
@@ -22,6 +23,8 @@
 - The new-application mock flow retains all seven-step fields locally, shows save/submission feedback, prevents duplicate clicks, and does not generate a tracking number.
 - The frontend `.env.example` already contains `VITE_API_URL=http://localhost:3005/api`; environment files are ignored by Git.
 - Auth, application, and notification contexts remain mock-backed until the backend routes and response behavior are available.
+- `desk_App/main.js` launches the frontend Vite server at `127.0.0.1:5173` when it is not already running, then opens that site in Electron. Closing Electron stops the Vite process it started.
+- The desktop experience inherits the current website's registration and demo role sign-in flows; it is not a separate authentication implementation.
 
 ## Integration gaps to resolve
 

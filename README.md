@@ -76,6 +76,7 @@ stateDiagram-v2
 ## 💻 Technology Stack
 
 * **Frontend**: React 19, Vite 6, Tailwind CSS v4, React Router v7, Framer Motion v14, Recharts v3, Lucide Icons
+* **Desktop**: Electron wrapper that opens the existing React/Vite portal in a native desktop window
 * **Backend**: Node.js & Express REST API, Zod (schema validation), JWT & bcrypt authentication
 * **Database & ORM**: PostgreSQL (ACID-compliant relational DBMS), Prisma ORM (type-safe queries & migrations)
 * **Frontend**: Vite, React, JavaScript, Tailwind CSS, Lucide Icons
@@ -92,6 +93,7 @@ stateDiagram-v2
 ```text
 AYUSH-Startup-Registration-Portal/
 ├── frontend/
+├── desk_App/                 # Electron desktop launcher for the React portal
 ├── backend/
 │   └── prisma/
 │       ├── schema.prisma
@@ -114,6 +116,18 @@ AYUSH-Startup-Registration-Portal/
     ├── database-design.md
     └── database-workflow.md
 ```
+
+### Desktop application
+
+The Electron desktop client lives in [`desk_App/`](./desk_App/README.md). It launches the existing React website in an Electron window, so the public pages and startup/officer/admin demo flows are shared with the browser version. It does not duplicate or modify the website source.
+
+```bash
+cd desk_App
+npm install
+npm start
+```
+
+Install frontend dependencies in `frontend/` first if they are not already present. The desktop app starts the Vite server automatically. Authentication and application data are still demo/mock-backed; backend business endpoints and PostgreSQL synchronization have not been implemented.
 
 ---
 

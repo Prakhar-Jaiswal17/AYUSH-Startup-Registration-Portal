@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src http://localhost:3005" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f6f8f5" />
+    <title>AYUSH Setu Desktop</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand"><div class="brand-mark">A</div><div><strong>AYUSH Setu</strong><small>STARTUP PORTAL</small></div></div>
+        <div class="workspace-label">WORKSPACE</div>
+        <nav id="navigation">
+          <button class="nav-item active" data-page="overview"><span>◫</span> Overview</button>
+          <button class="nav-item" data-page="applications"><span>▤</span> My applications <b class="nav-count">3</b></button>
+          <button class="nav-item" data-page="documents"><span>▧</span> Documents</button>
+          <button class="nav-item" data-page="guidance"><span>◇</span> AYUSH guidance</button>
+        </nav>
+        <div class="sidebar-bottom"><div class="help-card"><div class="help-icon">?</div><strong>Need a hand?</strong><p>Find guidance for your application journey.</p><button data-page="guidance">Explore guidance <span>↗</span></button></div><div class="user-mini"><div class="avatar">RS</div><div><strong>Riya Sharma</strong><small>Startup applicant</small></div><button id="profile-button" aria-label="Profile">⌄</button></div></div>
+      </aside>
+      <main class="main-area">
+        <header class="topbar"><div class="breadcrumbs">Workspace <span>/</span> <strong id="crumb">Overview</strong></div><div class="top-actions"><span class="connection" id="connection"><i></i> Checking portal</span><button class="icon-button" id="refresh" title="Refresh">⟳</button><button class="icon-button notification" title="Notifications">♧<i></i></button><div class="avatar small">RS</div></div></header>
+        <div class="content" id="content"></div>
+        <footer>AYUSH Setu Desktop <span>•</span> Application review portal <span class="footer-right">This portal does not issue statutory AYUSH licences or approvals.</span></footer>
+      </main>
+    </div>
+    <script src="renderer.js"></script>
+  </body>
+</html>
