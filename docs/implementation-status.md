@@ -3,6 +3,8 @@
 **Reviewed:** 12 November 2026  
 **Scope:** Repository state in the `main` working tree. The design and API documents below describe the target system unless this page says they are implemented.
 
+**Team responsibilities:** See [team-roles.md](./team-roles.md) and the route ownership table in [api-contract.md](./api-contract.md).
+
 ## Current state
 
 | Area | Implemented now | Not implemented or not verified |
@@ -28,7 +30,7 @@
 
 ## Integration gaps to resolve
 
-The API contract is a draft pending agreement by both route owners. Before full live integration, account for these mappings and gaps:
+API contract version 1.3 is a draft pending review by the route owners. Before live integration, account for these mappings and gaps. Sarth should review the resources response shape before connecting that page.
 
 1. Map category selection to `ayush_categories.code`, not a UUID.
 2. Translate uppercase API roles/statuses to lowercase/title-case database values.

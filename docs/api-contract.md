@@ -1,10 +1,10 @@
 # API Contract — AYUSH Startup Registration Portal
 
-> **Document version:** 1.2 (draft)
-> **Phase:** Phase 2 — Chunk 4 (proposed API contract reconciliation)
-> **Status:** Proposed alignment with the existing PostgreSQL schema; pending review by both route owners. This draft does not change the SQL or Prisma schema.
+> **Document version:** 1.3 (draft)
+> **Phase:** Phase 2 — Chunk 4 (proposed API contract and team ownership)
+> **Status:** Proposed alignment with the existing PostgreSQL schema; Prakhar and Arnav review API fields together, and Sarth reviews the resources contract before connecting that page. This draft does not change the SQL or Prisma schema.
 
-This document is intended to be the source of truth for HTTP API communication between the React frontend and Express backend. Version 1.2 is a proposal; both route owners must review it before its field changes replace the previously agreed contract.
+This document is intended to be the source of truth for HTTP API communication between the React frontend and Express backend. Version 1.3 is a proposal; the affected collaborators must review it before its field changes replace the previously agreed contract. See [team-roles.md](./team-roles.md) for the full division of project work.
 
 ---
 
@@ -17,15 +17,15 @@ This document is intended to be the source of truth for HTTP API communication b
 5. [Pagination Shape](#5-pagination-shape)
 6. [Database Model Names & Key Fields](#6-database-model-names--key-fields)
 7. [Route Ownership](#7-route-ownership)
-8. [Auth Routes](#8-auth-routes-prakhar)
-9. [Startup Profile Routes](#9-startup-profile-routes-prakhar)
-10. [Application Routes — Startup-Facing](#10-application-routes--startup-facing-prakhar)
-11. [Document Routes](#11-document-routes-teammate)
-12. [Clarification Query Routes](#12-clarification-query-routes-teammate)
-13. [Officer Routes](#13-officer-routes-teammate)
-14. [Notification Routes](#14-notification-routes-teammate)
-15. [Admin Routes](#15-admin-routes-teammate)
-16. [Resource Routes](#16-resource-routes-teammate)
+8. [Auth Routes](#8-auth-routes)
+9. [Startup Profile Routes](#9-startup-profile-routes)
+10. [Application Routes — Startup-Facing](#10-application-routes--startup-facing)
+11. [Document Routes](#11-document-routes)
+12. [Clarification Query Routes](#12-clarification-query-routes)
+13. [Officer Routes](#13-officer-routes)
+14. [Notification Routes](#14-notification-routes)
+15. [Admin Routes](#15-admin-routes)
+16. [Resource Routes](#16-resource-routes)
 17. [Error Codes](#17-error-codes)
 18. [Frontend Status Label Mapping](#18-frontend-status-label-mapping)
 19. [File Upload Specification](#19-file-upload-specification)
@@ -45,7 +45,7 @@ This document is intended to be the source of truth for HTTP API communication b
 Backend env variables required in `backend/.env`:
 
 ```
-DATABASE_URL=...          # PostgreSQL connection string (Prakhar owns this)
+DATABASE_URL=...          # PostgreSQL connection string
 JWT_SECRET=...            # Random 256-bit secret
 JWT_EXPIRES_IN=7d         # Token lifetime
 PORT=3005
@@ -215,46 +215,29 @@ The following earlier contract fields have no persistence column and must not be
 
 ## 7. Route Ownership
 
-| Route prefix | File | Owner |
+| Work area | Routes/files | Member |
 | :--- | :--- | :--- |
-| `/api/auth/*` | `backend/src/routes/auth.js` | **Prakhar** |
-| `/api/startups/*` | `backend/src/routes/startups.js` | **Prakhar** |
-| `/api/applications/*` (startup-facing CRUD + submit) | `backend/src/routes/applications.js` | **Prakhar** |
-| Shared auth middleware | `backend/src/middleware/auth.js` | **Prakhar** |
-| Shared validation middleware | `backend/src/middleware/validateRequest.js` | **Prakhar** |
-| `/api/applications/:id/documents` (upload) | `backend/src/routes/documents.js` | **Teammate** |
-| `/api/documents/*` (verify, delete) | `backend/src/routes/documents.js` | **Teammate** |
-| `/api/applications/:id/queries` | `backend/src/routes/queries.js` | **Teammate** |
-| `/api/queries/*` (respond, resolve) | `backend/src/routes/queries.js` | **Teammate** |
-| `/api/officer/*` | `backend/src/routes/officer.js` | **Teammate** |
-| `/api/notifications/*` | `backend/src/routes/notifications.js` | **Teammate** |
-| `/api/admin/*` | `backend/src/routes/admin.js` | **Teammate** |
-| `/api/resources/*` | `backend/src/routes/resources.js` | **Teammate** |
-| `/api/categories` | `backend/src/routes/categories.js` | **Teammate** |
+| Shared Prisma client, authentication middleware, and JWT handling | Shared Prisma client module; `backend/src/middleware/auth.js` | **Prakhar** |
+| Authentication APIs | `/api/auth/*` | **Prakhar** |
+| Startup profile APIs | `/api/startups/*` | **Prakhar** |
+| Startup application draft, read, update, and submit APIs | `/api/applications/*` (startup-facing) | **Prakhar** |
+| Officer queue, assignment, review, and decision APIs | `/api/officer/*`, application assignment/review/decision routes | **Arnav** |
+| Clarification-query APIs | `/api/applications/:id/queries`, `/api/queries/*` | **Arnav** |
+| Notification APIs | `/api/notifications/*` | **Arnav** |
+| Login, registration, startup profile/application, officer, admin-review, query, and notification screen integration | React pages and contexts | **Arnav** |
+| Curated static resources and public resources page integration | `backend/src/routes/resources.js`, public resources page | **Sarth**; the endpoint already exists |
+| Route registration in the Express server | `backend/src/server.js` | **Prakhar** |
+| Document upload and verification APIs | `/api/applications/:id/documents`, `/api/documents/*` | **To be assigned** |
+| AYUSH categories API | `/api/categories` | **To be assigned** |
+| Admin analytics, user-management, and audit-log APIs | `/api/admin/*` | **To be confirmed**; Arnav connects the admin review screens |
 
-### Mounting order in `server.js` (Prakhar adds his, teammate adds theirs)
+### Route mounting in `server.js`
 
-```js
-// Prakhar mounts
-app.use('/api/auth',         require('./routes/auth'));
-app.use('/api/startups',     require('./routes/startups'));
-app.use('/api/applications', require('./routes/applications'));
-
-// Arnav mounts
-app.use('/api/documents',      require('./routes/documents'));
-app.use('/api/queries',        require('./routes/queries'));
-app.use('/api/officer',        require('./routes/officer'));
-app.use('/api/notifications',  require('./routes/notifications'));
-app.use('/api/admin',          require('./routes/admin'));
-app.use('/api/resources',      require('./routes/resources'));
-app.use('/api/categories',     require('./routes/categories'));
-```
-
-> Arnav must NOT edit `server.js` body — only add the `app.use(...)` lines above in coordination with Prakhar. Agree on a single commit to avoid merge conflicts on `server.js`.
+Prakhar maintains route registration in `backend/src/server.js`. Route owners provide their module path and coordinate with Prakhar before it is mounted. The existing public resources route is already mounted. Other collaborators should not edit `server.js` without coordinating with Prakhar.
 
 ---
 
-## 8. Auth Routes (Prakhar)
+## 8. Auth Routes
 
 ### `POST /api/auth/register`
 
@@ -368,7 +351,7 @@ Get the authenticated user's profile.
 
 ---
 
-## 9. Startup Profile Routes (Prakhar)
+## 9. Startup Profile Routes
 
 ### `GET /api/startups/:id`
 
@@ -409,7 +392,7 @@ Convenience routes for the authenticated `STARTUP` user. `GET` returns that user
 
 ---
 
-## 10. Application Routes — Startup-Facing (Prakhar)
+## 10. Application Routes — Startup-Facing
 
 ### `POST /api/applications`
 
@@ -601,7 +584,7 @@ Submit a draft application for review.
 
 ---
 
-## 11. Document Routes (Teammate)
+## 11. Document Routes
 
 ### `POST /api/applications/:id/documents`
 
@@ -682,7 +665,7 @@ Delete an uploaded document.
 
 ---
 
-## 12. Clarification Query Routes (Teammate)
+## 12. Clarification Query Routes
 
 ### `POST /api/applications/:id/queries`
 
@@ -754,7 +737,7 @@ Officer marks a query as resolved.
 
 ---
 
-## 13. Officer Routes (Teammate)
+## 13. Officer Routes
 
 ### `GET /api/officer/applications`
 
@@ -842,11 +825,11 @@ Officer approves or rejects an application.
 }
 ```
 
-**Notes:** Backend records status history and creates notification to startup. For `APPROVED`, backend may generate a portal recognition reference number (stored in `metadata` or a dedicated field — Prakhar to decide and document the field name in an amendment to this contract before implementation).
+**Notes:** Backend records status history and creates notification to startup. For `APPROVED`, the team must agree whether to add a portal recognition reference field or defer it; the current schema has no `metadata` field. Prakhar and Arnav coordinate any related API or schema amendment before implementation.
 
 ---
 
-## 14. Notification Routes (Teammate)
+## 14. Notification Routes
 
 ### `GET /api/notifications`
 
@@ -902,7 +885,7 @@ Mark all notifications as read for the authenticated user.
 
 ---
 
-## 15. Admin Routes (Teammate)
+## 15. Admin Routes
 
 ### `GET /api/admin/analytics`
 
@@ -946,7 +929,7 @@ Mark all notifications as read for the authenticated user.
 
 ### `PATCH /api/admin/users/:id/toggle-active` — deferred
 
-The current `User` schema has no account-active field. Do not implement this route or expose an `isActive` filter until both owners agree to a schema change and its migration. If the feature is not approved, remove this route from the agreed contract and frontend wrapper.
+The current `User` schema has no account-active field. Do not implement this route or expose an `isActive` filter until the affected collaborators agree to a schema change and its migration. If the feature is not approved, remove this route from the agreed contract and frontend wrapper.
 
 ---
 
@@ -960,7 +943,7 @@ The current `User` schema has no account-active field. Do not implement this rou
 
 ---
 
-## 16. Resource Routes (Teammate)
+## 16. Resource Routes
 
 Resources are publicly accessible guides and FAQs (read-only for non-admins). There is no `Resource` model/table in the existing SQL or Prisma schema. These endpoints must read static/configured content and must not attempt Prisma CRUD against a nonexistent table.
 
@@ -1113,7 +1096,7 @@ The proposed mappings in this draft follow the existing database design. Keep da
 
 ### Schema change protocol
 
-If either developer identifies a required schema change after this contract is agreed:
+If a collaborator identifies a required schema change after this contract is agreed:
 
 1. Raise the change in a team discussion.
 2. Agree on the database design change before implementation.
@@ -1123,5 +1106,5 @@ If either developer identifies a required schema change after this contract is a
 
 ---
 
-*Draft reconciliation prepared 12 November 2026. The existing SQL and Prisma schema remain unchanged. Review these proposed API field changes with both route owners before treating version 1.2 as agreed.*
+*Draft reconciliation prepared 12 November 2026. The existing SQL and Prisma schema remain unchanged. Review the proposed API field changes with the affected collaborators before treating version 1.3 as agreed.*
 
