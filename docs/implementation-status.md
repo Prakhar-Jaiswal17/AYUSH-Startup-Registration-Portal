@@ -24,7 +24,7 @@
 - `statusHelpers.js` maps the canonical API statuses to display labels and colors, with safe handling for unknown values. The status badge and timeline use this mapping while remaining compatible with existing mock display labels.
 - The new-application mock flow retains all seven-step fields locally, shows save/submission feedback, prevents duplicate clicks, and does not generate a tracking number.
 - The frontend `.env.example` already contains `VITE_API_URL=http://localhost:3005/api`; environment files are ignored by Git.
-- Auth, application, and notification contexts remain mock-backed until the backend routes and response behavior are available.
+- Auth, application, and notification contexts remain mock-backed; connect them to the now-available auth, startup, and core application routes before describing the UI as database-integrated.
 - `desk_App/main.js` launches the frontend Vite server at `127.0.0.1:5173` when it is not already running, then opens that site in Electron. Closing Electron stops the Vite process it started.
 - The desktop experience inherits the current website's registration and demo role sign-in flows; it is not a separate authentication implementation.
 

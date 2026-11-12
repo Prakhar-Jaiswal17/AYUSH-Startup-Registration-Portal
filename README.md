@@ -82,7 +82,7 @@ stateDiagram-v2
 * **Frontend**: Vite, React, JavaScript, Tailwind CSS, Lucide Icons
 * **Backend**: Node.js, Express, JavaScript (CommonJS), REST API
 * **Database & ORM**: PostgreSQL and Prisma ORM
-* **Authentication & Security**: To be implemented; server-side role checks and password hashing are required
+* **Authentication & Security**: Backend registration/login uses bcrypt password hashing and JWT; protected workflow coverage and frontend integration remain in progress
 * **Document Storage**: Secure local/cloud storage with signed access URLs
 * **Documentation & Diagrams**: Markdown with native GitHub-rendered Mermaid.js diagrams
 
@@ -127,7 +127,7 @@ npm install
 npm start
 ```
 
-Install frontend dependencies in `frontend/` first if they are not already present. The desktop app starts the Vite server automatically. Authentication and application data are still demo/mock-backed; backend business endpoints and PostgreSQL synchronization have not been implemented.
+Install frontend dependencies in `frontend/` first if they are not already present. The desktop app starts the Vite server automatically. Backend authentication, startup-profile, and core application APIs now exist, but the React contexts still use demo/mock data and are not yet connected to those APIs; the desktop app therefore does not synchronize application data with PostgreSQL.
 
 ---
 
