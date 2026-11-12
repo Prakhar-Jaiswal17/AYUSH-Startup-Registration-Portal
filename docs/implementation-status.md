@@ -3,6 +3,8 @@
 **Reviewed:** 12 November 2026  
 **Scope:** Repository state in the `main` working tree. The design and API documents below describe the target system unless this page says they are implemented.
 
+**Team responsibilities:** See [team-roles.md](./team-roles.md) and the route ownership table in [api-contract.md](./api-contract.md).
+
 ## Current state
 
 | Area | Implemented now | Not implemented or not verified |
@@ -28,16 +30,15 @@
 
 ## Integration gaps to resolve
 
-The API contract is the agreed target. Before live integration, account for these mappings and gaps:
+API contract version 1.3 is a draft pending review by Prakhar and Arnav; Sarth should review the resources response shape before connecting that page. Before live integration, account for these mappings and gaps:
 
 1. Map category selection to `ayush_categories.code`, not a UUID.
 2. Translate uppercase API roles/statuses to lowercase/title-case database values.
 3. The application ID is the formatted tracking number; an optional `trackingNumber` alias may return the same value.
 4. Application regulatory/business data uses flexible JSONB fields; founders belong to the startup profile.
 5. The upload UI now reflects the 5 MB and `.pdf,.jpg,.jpeg,.png` defaults; actual upload and server-side validation are not implemented.
-6. The API contract uses `CLIENT_URL`, while `.env.example` and `server.js` use `FRONTEND_ORIGIN`.
-7. `certificate_number` is legacy/internal only and must not be presented as a statutory license, AYUSH approval, or legal certification.
-8. The schema lacks activation, uploader, persistent resource, and review timestamp fields; do not assume these are persisted.
+6. `certificate_number` is legacy/internal only and must not be presented as a statutory license, AYUSH approval, or legal certification.
+7. The schema lacks activation, uploader, persistent resource, and review timestamp fields; do not assume these are persisted.
 
 ## Verification
 
