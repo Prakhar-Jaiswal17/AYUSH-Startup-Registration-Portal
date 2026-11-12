@@ -30,6 +30,12 @@ function plainObject(value, field) {
     return value
 }
 
+function optionalText(value, field) {
+    if (value === undefined) return undefined
+    if (typeof value !== 'string' || !value.trim()) throw httpError(422, 'Validation failed', { [field]: 'Must be a non-empty string.' })
+    return value.trim()
+}
+
 function apiStatusToDb(status) {
     const match = Object.entries(STATUS_TO_API).find(([, api]) => api === status)
     return match?.[0]
@@ -38,8 +44,8 @@ function apiStatusToDb(status) {
 async function nextTrackingNumber(tx) {
     const year = new Date().getFullYear()
     const prefix = `APP-${year}-`
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(74112601)`
-    const rows = await tx.$queryRaw`SELECT COALESCE(MAX((regexp_match("id", ${`^APP-${year}-([0-9]+)$` }))[1]::integer), 0)::integer AS highest FROM "applications" WHERE "id" ~ ${`^APP-${year}-[0-9]+$`}`
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(74112601)::text AS lock_status`
+    const rows = await tx.$queryRaw`SELECT COALESCE(MAX((regexp_match("id", ${`^APP-${year}-([0-9]+)$`}))[1]::integer), 0)::integer AS highest FROM "applications" WHERE "id" ~ ${`^APP-${year}-[0-9]+$`}`
     return `${prefix}${String(rows[0].highest + 1).padStart(3, '0')}`
 }
 
@@ -138,19 +144,20 @@ router.put('/:id', authenticate, allowRoles('startup'), asyncHandler(async (req,
     const founders = parseFounders(req.body.founders)
     const regulatory = plainObject(req.body.regulatoryInfo, 'regulatoryInfo')
     const business = plainObject(req.body.businessInfo, 'businessInfo')
-    const categoryCode = req.body.categoryCode
+    const categoryCode = optionalText(req.body.categoryCode, 'categoryCode')
     if (categoryCode !== undefined) {
         requireFields({ categoryCode }, ['categoryCode'])
         const category = await prisma.ayushCategory.findUnique({ where: { code: categoryCode } })
         if (!category || !category.isActive) throw httpError(422, 'Unknown or inactive AYUSH category code.', { categoryCode: 'Choose an active AYUSH category code.' })
     }
-    const startupData = parseStartupInput({ ...details, ...(req.body.state !== undefined ? { state: req.body.state } : {}) })
+    const requestedState = optionalText(req.body.state, 'state')
+    const startupData = parseStartupInput({ ...details, ...(requestedState !== undefined ? { state: requestedState } : {}) })
     const updated = await prisma.$transaction(async tx => {
         if (Object.keys(startupData).length) await tx.startup.update({ where: { id: current.startupId }, data: startupData })
         await saveFounders(tx, current.startupId, founders)
         return tx.application.update({ where: { id: current.id }, data: {
             ...(categoryCode ? { ayushDomain: categoryCode } : {}),
-            ...(req.body.state ? { state: req.body.state } : {}),
+            ...(requestedState ? { state: requestedState } : {}),
             ...(regulatory !== undefined ? { regulatoryDetails: regulatory } : {}),
             ...(business !== undefined ? { businessDetailsSnapshot: business } : {}),
             lastUpdated: new Date(),

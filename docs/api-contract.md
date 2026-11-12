@@ -403,6 +403,10 @@ Update startup profile.
 
 **Success `200`:** Updated startup object (same shape as GET above).
 
+### `GET /api/startups/me` and `PUT /api/startups/me`
+
+Convenience routes for the authenticated `STARTUP` user. `GET` returns that user's profile or `404` if it has not been created. `PUT` creates the profile on first use and updates it on later calls. Creating a profile requires `legalName`, `brandName`, `ayushDomain` (an active AYUSH category code), and `state`; optional `founders` replaces the startup's founder list in the same transaction. The `:id` routes remain available with the ownership rules above.
+
 ---
 
 ## 10. Application Routes — Startup-Facing (Prakhar)
@@ -416,7 +420,7 @@ Create a new draft application.
 **Request body:**
 ```json
 {
-  "categoryCode": "AYU",
+  "categoryCode": "AYURVEDA",
   "state": "Maharashtra",
   "startupDetails": {
     "legalName": "AyurTech Innovations Pvt. Ltd.",
@@ -461,7 +465,7 @@ Create a new draft application.
     "id": "APP-2025-007",
     "trackingNumber": "APP-2025-007",
     "status": "DRAFT",
-    "categoryCode": "AYU",
+    "categoryCode": "AYURVEDA",
     "createdAt": "2025-11-11T10:00:00.000Z"
   }
 }
@@ -508,7 +512,7 @@ Get full application details.
     "id": "APP-2025-007",
     "trackingNumber": "APP-2025-007",
     "status": "UNDER_REVIEW",
-    "category": { "code": "AYU", "name": "Ayurveda" },
+    "category": { "code": "AYURVEDA", "name": "Ayurveda" },
     "startup": { "id": "uuid", "legalName": "AyurTech Innovations Pvt. Ltd.", "brandName": "AyurTech" },
     "assignedOfficer": { "id": "uuid", "name": "Dr. Priya Nair" },
     "founders": [ { "name": "Riya Sharma", "designation": "CEO", "email": "riya@ayurtech.in" } ],
@@ -1005,7 +1009,7 @@ Returns the list of AYUSH categories (Ayurveda, Yoga & Naturopathy, Unani, Siddh
 {
   "success": true,
   "data": [
-    { "code": "AYU", "name": "Ayurveda", "description": "..." }
+    { "code": "AYURVEDA", "name": "Ayurveda", "description": "..." }
   ]
 }
 ```

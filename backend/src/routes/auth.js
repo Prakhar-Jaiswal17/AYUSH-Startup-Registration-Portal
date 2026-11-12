@@ -17,7 +17,7 @@ router.post('/register', asyncHandler(async (req, res) => {
     const fields = {}
     if (name.length > 255) fields.name = 'Must be 255 characters or fewer.'
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 255) fields.email = 'Enter a valid email address.'
-    if (password.length < 8 || password.length > 72) fields.password = 'Must be between 8 and 72 characters.'
+    if (password.length < 8 || Buffer.byteLength(password, 'utf8') > 72) fields.password = 'Must be at least 8 characters and no more than 72 UTF-8 bytes.'
     if (Object.keys(fields).length) throw httpError(422, 'Validation failed', fields)
 
     const passwordHash = await bcrypt.hash(password, 12)
