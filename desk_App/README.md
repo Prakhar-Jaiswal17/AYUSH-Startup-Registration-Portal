@@ -9,7 +9,7 @@ An Electron desktop version of the AYUSH Startup Registration Portal. Electron o
 - The same React routes, mock data, and browser-storage behavior.
 - A native Electron window with context isolation and Node integration disabled.
 
-The current Express backend implements only `GET /api/health`. Authentication, application, document, and review endpoints are not implemented yet. The desktop app therefore inherits the website's mock/demo behavior; it does not save records through the API or submit applications to a government authority. This portal does not issue statutory AYUSH licences or approvals.
+The Express backend now implements `GET /api/health`, bcrypt/JWT authentication, startup profile APIs, core application draft/read/update/submit/status-history APIs, and public static resources. Document upload, query, officer, notification, admin, and category APIs remain unfinished. The React auth and application contexts are still mock-backed and do not call the implemented backend routes, so the desktop app also uses the website's mock/demo behavior and does not synchronize records with PostgreSQL. The portal does not issue statutory AYUSH licences or approvals.
 
 ## Run locally
 
@@ -22,7 +22,7 @@ npm start
 
 The desktop app starts the website's Vite server on `127.0.0.1:5173` and opens it in Electron. Frontend dependencies must already be installed in `frontend/` (`npm install` there, if needed). Close Electron to stop the Vite server it started. If the website is already running on that address, Electron reuses it.
 
-Sign-in and registration have the same demo behavior as the website. Business API routes are not implemented yet, so application data remains mock/local and is not synchronized with PostgreSQL.
+Sign-in and registration have the same demo behavior as the website. Backend auth and core application APIs are available for direct API testing, but the website and desktop UI are not connected to them yet. Application data remains mock/local and is not synchronized with PostgreSQL.
 
 ## Security notes
 
@@ -30,4 +30,4 @@ Electron uses context isolation, a sandboxed renderer, and disabled Node integra
 
 ## Next integration step
 
-When backend business routes and authentication are implemented, connect the website's existing API client and confirm the desktop origin is allowed by backend CORS.
+Next, connect the website's auth, application, and startup contexts to the implemented APIs. Then add the remaining document/query/officer/admin APIs and their UI integrations. Electron will inherit those changes because it displays the same React website; confirm the desktop origin remains allowed by backend CORS.

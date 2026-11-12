@@ -28,7 +28,7 @@ docs/
 
 ## Current implementation status
 
-The React frontend remains mock-backed for most workflows. The Express server provides a health check and a public static resources API; the Electron desktop app launches the same React website in a native window. PostgreSQL is mapped in Prisma and tracked through migrations. See [implementation-status.md](./implementation-status.md) for implementation gaps, [team-roles.md](./team-roles.md) for collaborator responsibilities, and [the desktop app guide](../desk_App/README.md) for launch instructions.
+The React frontend remains mock-backed. The Express server now provides bcrypt/JWT authentication, startup profile and core application APIs, plus public static resources; the Prisma schema and migrations define PostgreSQL persistence. The React contexts are not yet wired to these APIs, so neither the website nor Electron currently uses database-backed sign-in/application state. Electron launches the same React website in a native window. See [implementation-status.md](./implementation-status.md) for gaps, [team-roles.md](./team-roles.md) for responsibilities, and [the desktop app guide](../desk_App/README.md) for launch instructions.
 
 ---
 
