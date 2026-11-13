@@ -1,79 +1,37 @@
 # Project Documentation Index
 
-This directory serves as the centralized documentation repository for the **AYUSH Startup Registration Portal**, developed as part of the **Advanced Software Development (ASD)** and **Database Management Systems (DBMS)** curriculum.
+This directory contains the project requirements, design documents, current implementation notes, API proposal, and team assignments.
 
----
+## Current status
 
-## 📑 Documentation Structure
+The repository now has PostgreSQL/Prisma persistence foundations, core auth/startup/application APIs, and a tested resources API consumed by the public and startup resource pages. Most other React workflows remain mock-backed, and officer/query/notification/document/admin integrations are incomplete. The Electron app launches the same website in a native development window; it is not a packaged release. See [implementation-status.md](./implementation-status.md) for details and verification.
 
-```text
-docs/
-├── README.md                  # Master documentation index (this file)
-├── team-roles.md              # Current collaborator responsibilities and open ownership items
-│
-├── requirements.md            # [Phase 1] Functional & Non-Functional Requirements & MVP Scope
-├── user-roles.md              # [Phase 1] Roles, RBAC Permissions Matrix & Use-Case Diagram
-├── application-workflow.md    # [Phase 1] Application Lifecycle & State Transitions
-├── tech-stack.md              # [Phase 1] Technology Stack Specification & Academic Justification
-├── architecture.md            # [Phase 1 & 2] High-Level 3-Tier System Architecture & Communication
-│
-├── ER-diagram.md              # [Phase 2] Mermaid Entity-Relationship Diagram & Cardinalities
-├── database-design.md         # [Phase 2] Relational Schema Design, Attributes, Keys & 3NF Normalization
-├── database-workflow.md       # [Phase 2] Frontend-to-Database Mapping & Transaction Boundaries
-│
-├── api-contract.md            # [Phase 2 Chunk 4] Proposed HTTP API contract and route ownership
-├── implementation-status.md   # Verified repository implementation state and integration gaps
-└── ../desk_App/README.md      # Electron desktop launcher setup and current limitations
-```
+## Project and team
 
-## Current implementation status
+| Document | Contents |
+|---|---|
+| [team-roles.md](./team-roles.md) | Current assignments, completed work, and items needing an owner |
+| [implementation-status.md](./implementation-status.md) | Repository snapshot, verified behavior, and remaining integration gaps |
+| [api-contract.md](./api-contract.md) | Draft HTTP contract; confirm with route owners before relying on it as final |
+| [../desk_App/README.md](../desk_App/README.md) | Electron development launcher setup and limitations |
 
-The React frontend remains mock-backed. The Express server now provides bcrypt/JWT authentication, startup profile and core application APIs, plus public static resources; the Prisma schema and migrations define PostgreSQL persistence. The React contexts are not yet wired to these APIs, so neither the website nor Electron currently uses database-backed sign-in/application state. Electron launches the same React website in a native window. See [implementation-status.md](./implementation-status.md) for gaps, [team-roles.md](./team-roles.md) for responsibilities, and [the desktop app guide](../desk_App/README.md) for launch instructions.
+## Requirements and architecture
 
----
+| Document | Contents |
+|---|---|
+| [requirements.md](./requirements.md) | Functional and non-functional requirements and scope |
+| [user-roles.md](./user-roles.md) | User roles and intended permissions |
+| [application-workflow.md](./application-workflow.md) | Intended application lifecycle and transitions |
+| [tech-stack.md](./tech-stack.md) | Technologies and current implementation state |
+| [architecture.md](./architecture.md) | Target architecture and what is connected today |
 
-## 📌 Phase 1: Requirement Analysis & Project Setup
+## Database
 
-| Document | Description |
-| :--- | :--- |
-| **[`requirements.md`](./requirements.md)** | Core objectives, Ministry of AYUSH & AIIA context, functional requirements (FR-1 to FR-7), non-functional requirements (security, scalability, usability), and MVP vs. future scope. |
-| **[`user-roles.md`](./user-roles.md)** | Detailed role specifications (*Startup Applicant*, *Government Reviewer*, *Administrator*), Role-Based Access Control (RBAC) matrix, and Mermaid Use-Case diagram. |
-| **[`team-roles.md`](./team-roles.md)** | Current project responsibilities for Prakhar, Arnav, and Sarth; coordination points and work that still needs an owner. |
-| **[`application-workflow.md`](./application-workflow.md)** | Complete end-to-end registration lifecycle, state transition machine (`Draft` $\rightarrow$ `Submitted` $\rightarrow$ `Under Review` $\rightarrow$ `Clarification Required` $\rightarrow$ `Resubmitted` $\rightarrow$ `Approved` / `Rejected`), and workflow flowchart. |
-| **[`tech-stack.md`](./tech-stack.md)** | Selected technologies (React 19, Vite, Tailwind CSS v4, Node.js/Express, PostgreSQL, Prisma ORM) and their academic and architectural justifications. |
-| **[`architecture.md`](./architecture.md)** | High-level 3-tier system architecture, tier-by-tier component interactions, inter-tier communication protocols, and security threat mitigations. |
+| Document | Contents |
+|---|---|
+| [ER-diagram.md](./ER-diagram.md) | Database entities and relationships |
+| [database-design.md](./database-design.md) | Relational schema design and decisions |
+| [database-workflow.md](./database-workflow.md) | Intended UI-to-data mapping and transaction boundaries; distinguish planned flows from implemented endpoints |
+| [../database/README.md](../database/README.md) | PostgreSQL, Prisma migration, and seed setup instructions |
 
----
-
-## 🗄️ Phase 2 — Chunk 1: Database Analysis & ER Design
-
-| Document | Description |
-| :--- | :--- |
-| **[`ER-diagram.md`](./ER-diagram.md)** | Complete Mermaid ER diagram showing all 11 finalized database entities, primary and foreign keys, relationship cardinalities (1:1, 1:N), and optional vs. mandatory constraints. |
-| **[`database-design.md`](./database-design.md)** | Comprehensive 3NF relational database specification. Details entity attributes, suggested PostgreSQL data types, primary and foreign keys, candidate entity rationalization, and design decisions. |
-| **[`database-workflow.md`](./database-workflow.md)** | Concrete mapping of React frontend views and context states to database operations, sequence diagrams of the review and clarification cycle, document verification state machine, and ACID transaction boundaries. |
-
----
-
-## ⚙️ Phase 2 — Chunk 2: Relational Schema & PostgreSQL Implementation
-
-The PostgreSQL DDL, sample data, and query scripts reside in the root [`database/`](../database) directory. The canonical database model is mapped into Prisma in `backend/prisma/schema.prisma`, with its reproducible migration history in `backend/prisma/migrations/`:
-
-| File | Description |
-| :--- | :--- |
-| **[`database/schema.sql`](../database/schema.sql)** | PostgreSQL DDL defining 11 tables, keys, foreign keys, CHECK constraints, and indexes. |
-| **[`database/seed.sql`](../database/seed.sql)** | Fictional sample records for the SQL schema, including demo users, applications, and documents. |
-| **[`database/queries.sql`](../database/queries.sql)** | Comprehensive SQL demonstration queries covering CRUD, multi-table INNER/LEFT JOINs, GROUP BY aggregations, CTEs, subqueries, ACID transactions, and Recharts analytics feeds. |
-| **[`database/README.md`](../database/README.md)** | Setup guide, execution order, demo account credentials, and PostgreSQL execution verification. |
-
-Commit `backend/prisma/schema.prisma` and all files under `backend/prisma/migrations/`. They are the shared database history. Do not commit `.env` files, database URLs, or `node_modules`.
-
----
-
-## 🔌 Phase 2 — Chunk 4: API Contract & Backend Integration
-
-| Document | Description |
-| :--- | :--- |
-| **[`api-contract.md`](./api-contract.md)** | Proposed HTTP contract for base URL, JWT auth, shared enums, Prisma model fields, route ownership, endpoint shapes, errors, status labels, uploads, and team constraints. Review the draft with the affected collaborators before implementation. |
-
-
+The Prisma schema and migration history are under `backend/prisma/`. Commit migrations; do not commit `.env` files, database URLs, or `node_modules`.

@@ -1,40 +1,31 @@
 # Technology Stack
 
-## Application stack
+The project uses JavaScript throughout; TypeScript is not part of the plan.
 
-| Layer | Technology | Role |
+## Stack
+
+| Layer | Technology | Current use |
 |---|---|---|
-| Frontend | Vite, React, JavaScript | Browser interface and role-specific pages |
-| Backend | Node.js, Express, JavaScript (CommonJS) | REST API, validation, authentication, and workflow rules |
-| Database | PostgreSQL | Persistent relational data |
-| ORM | Prisma | Database schema, migrations, and JavaScript database client |
-| Styling and UI | Tailwind CSS, Lucide, Framer Motion | Presentation, icons, and interface transitions |
-| Forms | React Hook Form and Zod | Client-side form state and validation |
+| Website | React 19, Vite, React Router, Tailwind CSS, Axios | Role-based prototype screens; public and startup resources pages call the API. Most workflow contexts/pages remain mock-backed. |
+| Desktop | Electron | Development launcher for the same React/Vite website; not a separately implemented or packaged application. |
+| API | Node.js, Express 5, JavaScript CommonJS | Health, authentication, startup profile, core application, and resources endpoints. |
+| Database | PostgreSQL | Relational persistence matching the agreed SQL design. |
+| ORM and migrations | Prisma 7 | JavaScript client via shared PostgreSQL adapter; schema, migrations, and category seed command. |
+| Authentication | bcryptjs and JSON Web Tokens | Password hashing and token-based API authentication are implemented. Frontend authentication is not yet connected. |
+| Backend validation | Express route validation and shared HTTP helpers | Request checks in implemented routes; there is no backend Zod integration. Zod is present as a frontend dependency. |
 
-JavaScript is used throughout; TypeScript is not planned. The frontend and backend are separate applications in the target architecture. The browser will call the Express API over HTTP, and the backend will connect to PostgreSQL through Prisma once those integrations are implemented.
+## Current integration
 
-## Current implementation
+- `frontend/src/services/api.js` holds Axios wrappers. The resource API wrappers are consumed by the public and startup resource pages; other wrappers are prepared but their workflows are not yet connected.
+- `AuthContext`, `ApplicationContext`, and `NotificationContext` still use mock data/browser storage for the main application flows.
+- Backend environment settings, including `DATABASE_URL`, belong in `backend/.env`. Keep real `.env` files private. Frontend `VITE_*` values are exposed to the browser and must not contain secrets.
+- The Electron launcher loads the website and therefore inherits whichever website integrations are active.
 
-- The frontend package includes React 19, Vite 6, Tailwind CSS v4, Axios, React Router, React Hook Form, Zod, and the UI libraries above. The current seven-step application form is implemented with React state; it does not yet use React Hook Form or Zod.
-- `frontend/src/services/api.js` uses `VITE_API_URL` and falls back to `http://localhost:3005/api`. API wrappers and centralized error handling are prepared, but the contexts and screens remain mock-backed.
-- The CommonJS Express server currently exposes only `GET /api/health` on port `3005`. Auth and business routes are not implemented.
-- The Prisma 7 configuration and PostgreSQL datasource are present, but `schema.prisma` has no models. The SQL scripts in `database/` are separate and have not been connected to Prisma.
-- Frontend and backend example environment files are present. Keep real `.env` files uncommitted; only public frontend configuration such as `VITE_API_URL` belongs in the frontend environment.
+## Security and domain constraints
 
-## Development configuration
+- Store only password hashes, never plaintext passwords.
+- Enforce authentication, record ownership, and role permissions on the server. Frontend route guards are for navigation, not security.
+- Uploaded files must eventually use private storage with authorized access; server-side file storage is not implemented yet.
+- Portal application states must not be described as statutory AYUSH licences, government approvals, or legal certifications.
 
-- Backend settings, including `DATABASE_URL`, belong in `backend/.env` and must not be committed.
-- `backend/.env.example` documents the required backend settings using placeholders.
-- The frontend uses `VITE_API_URL` to locate the backend. Frontend environment variables are public in the browser and must not contain secrets.
-- Prisma schema and migrations live under `backend/prisma/`.
-
-## Security principles
-
-- Hash passwords before storage.
-- Enforce authentication, ownership, and role permissions in Express routes or middleware.
-- Validate incoming data on the server; client validation is only for usability.
-- Store uploaded documents in private storage and authorize each download.
-- Record important workflow transitions and administrative actions.
-- Do not present a portal status, recognition, or certificate as a statutory AYUSH license or regulatory approval issued by an authority.
-
-For the complete implementation snapshot and contract/database differences, see [implementation-status.md](./implementation-status.md).
+See [implementation-status.md](./implementation-status.md) for the dated verification snapshot.

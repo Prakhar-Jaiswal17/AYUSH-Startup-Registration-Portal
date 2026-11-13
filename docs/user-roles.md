@@ -1,6 +1,6 @@
 # User Roles, Permissions, and Use Case Analysis
 
-This document describes target roles and permissions. The current portal screens are a frontend prototype; authentication and authorization are not enforced by backend APIs yet. See [implementation-status.md](./implementation-status.md).
+This document describes target roles and permissions. Backend authentication and authorization are implemented for the current auth, startup profile, and startup application routes; the React auth and workflow screens remain mock-backed, and officer/admin authorization workflows are not complete. See [implementation-status.md](./implementation-status.md).
 
 ## 1. Overview of Stakeholders
 

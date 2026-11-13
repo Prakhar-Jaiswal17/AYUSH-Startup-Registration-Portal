@@ -1,80 +1,42 @@
 # System Architecture
 
-## 1. Architectural Overview
+## Target architecture
 
-The **target AYUSH Startup Registration Portal** uses a three-tier architecture: a React 19 / Vite frontend, a Node.js / Express API, and PostgreSQL persistence. Private document storage is a planned backend capability.
-
-The design emphasizes separation of concerns, server-side authorization, and relational data integrity aligned with Advanced Software Development and DBMS engineering principles.
-
-## Current implementation
-
-- The React app contains public, startup, officer, and admin screens and client-side route guards. Screens and contexts still use mock data and browser storage.
-- The Axios service is prepared with the documented base URL and route wrappers, but no page or context currently consumes those wrappers.
-- The CommonJS Express scaffold listens on port `3005` and exposes only `GET /api/health`. Business routes and authentication middleware are not present.
-- Prisma 7 configuration exists, but `backend/prisma/schema.prisma` has no models. Standalone SQL scripts exist under `database/`; no live database connection was verified.
-- Real file storage, live review workflows, notifications, and admin data are not implemented.
-
-The diagram and layer responsibilities below describe the intended architecture, not a connected end-to-end system. See [implementation-status.md](./implementation-status.md) for the verified state and integration gaps.
-
----
-
-## 2. System Architecture Diagram
-
-The diagram below illustrates the planned architectural layers and communication pathways:
+The target system has three main layers: a React website (also opened by Electron), a Node.js/Express API, and PostgreSQL accessed through Prisma. Private file storage is a planned capability.
 
 ```mermaid
 flowchart LR
-  Browser[Browser: Vite + React] -->|HTTP JSON / file uploads| API[Node.js + Express API]
+  Browser[Browser: React + Vite] -->|HTTP JSON| API[Express API]
+  Electron[Electron development launcher] --> Browser
   API --> Prisma[Prisma Client]
   Prisma --> DB[(PostgreSQL)]
-  API -. planned .-> Storage[Private document storage]
+  API -. planned .-> Files[Private document storage]
 ```
 
-## Responsibilities
+## Current implementation
 
-### Frontend
+- **Website:** Public and startup pages for resources consume the backend resources API. Auth, application, document, query, officer, notification, and admin workflow screens mostly remain prototypes backed by mock data/browser storage.
+- **Electron:** Opens the same website in a native window and reuses its routes and behavior. It is a development launcher, not a packaged desktop release.
+- **API:** Express routes currently cover health, bcrypt/JWT auth, startup profile read/create/update, startup application draft/read/update/submit/status history, and static public resources.
+- **Persistence:** The auth/startup/application endpoints use the shared Prisma client and PostgreSQL. Resource content is currently static in the resources route rather than stored in the database.
+- **File storage:** There is no server-side upload/download implementation yet.
 
-### 3.1 Presentation Layer (Frontend)
-- **Framework**: React 19, Vite 6, Tailwind CSS v4, and React Router v7.
-- **Responsibilities**:
-  - Rendering responsive, accessible user interfaces following government visual standards.
-  - A seven-step client-side application form. It currently uses React state and local demo data; React Hook Form and Zod are dependencies but are not used by this wizard.
-  - Interactive status timelines, document preview drawers, and Recharts analytics dashboards.
-  - Client-side role-based routing (`<ProtectedRoute>`) for demo navigation. These route guards do not replace backend authorization.
-- **Sub-systems**:
-  - **Public Portal**: Informational landing page, AYUSH guidelines, eligibility checklists, and FAQs.
-  - **Applicant Dashboard**: Profile, application, document, guidance, and notification prototype screens.
-  - **Reviewer Desk**: Queue, document review, clarification, and decision prototype screens.
-  - **Admin Console**: Analytics, user/officer, category, resource, and audit-log prototype screens.
+The backend routes exist independently of the React contexts. Except for resources, the website is not yet using those routes for its main workflow. See [implementation-status.md](./implementation-status.md) for checks and remaining work.
 
-### 3.2 Business Logic & Application Layer (Backend)
-- **Framework**: Node.js & Express REST API scaffold running on port `3005`.
-- **Responsibilities & Communication**:
-  - The target API exposes routers under `/api/auth`, `/api/startups`, `/api/applications`, `/api/documents`, `/api/queries`, `/api/officer`, `/api/notifications`, `/api/admin`, `/api/resources`, and `/api/categories`.
-  - **Authentication, authorization, validation, workflow rules, document handling, query handling, and audit logging are planned; none are implemented in the current scaffold.**
+## Layer responsibilities
 
-### 3.3 Data & Persistence Layer (Database & Storage)
-- **Relational Database**: PostgreSQL (Relational DBMS)
-  - The target schema stores the entities described by the database design and API contract.
-  - Enforces relational constraints (foreign keys with `ON DELETE CASCADE` or `ON DELETE SET NULL`, non-null checks, unique indexes).
-  - Transactions for critical workflow changes are part of the target design, not current backend behavior.
-- **Inter-Tier Communication**:
-  - **Frontend $\longleftrightarrow$ Backend**: The prepared Axios client is intended to exchange JSON and `multipart/form-data`; screens are not connected to it yet.
-  - **Backend $\longleftrightarrow$ Database**: Prisma is the target access layer. No Prisma models or live connection are currently in place.
-- **Document / Object Storage (planned)**:
-  - Private storage for uploaded startup and compliance documents, with metadata in PostgreSQL.
-  - No server-side upload or download storage is implemented.
+### Frontend and desktop
 
-### Database and files
+React renders the public and role-specific screens and sends HTTP requests through the Axios service where integrations exist. Client-side route guards support navigation but are not an authorization boundary. Electron loads the website; it does not implement a separate backend or database layer.
 
-In the target system, PostgreSQL stores structured records and Prisma defines the data model and access layer. The current SQL scripts are separate from the empty Prisma model file. Uploaded files are intended for private storage, with metadata in PostgreSQL.
+### API
 
-## Request flow
+Express handles HTTP requests, validation, authentication, authorization, and workflow rules. Implemented route groups are `/api/auth`, `/api/startups`, `/api/applications`, and `/api/resources`. Document upload, officer, query, notification, admin, and category route groups are not complete.
 
-1. In the target flow, the browser sends an API request to Express.
-2. Express authenticates the request and checks permissions.
-3. Application logic validates input and applies workflow rules.
-4. Prisma reads or updates PostgreSQL, using transactions for related critical changes.
-5. Express returns a JSON response to the browser.
+### Database and file storage
 
-The portal may track application outcomes or portal recognition. It must not claim to issue statutory licenses or regulatory approvals that belong to an external authority.
+PostgreSQL is modeled by `backend/prisma/schema.prisma`; versioned Prisma migrations are the reproducible schema setup. The SQL scripts under `database/` are standalone DBMS materials. Uploaded documents are intended for private storage with metadata in PostgreSQL, but that feature is not implemented.
+
+## Domain boundary
+
+The portal records application workflow outcomes. It does not issue statutory AYUSH licences, official regulatory approvals, or legal certifications.
