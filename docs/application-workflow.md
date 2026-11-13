@@ -1,6 +1,6 @@
 # Application Workflow and Lifecycle Specification
 
-This is the target application workflow. The current frontend simulates parts of it with mock data; no live backend workflow or server-generated tracking number is available yet. Portal outcomes must not be described as statutory AYUSH licenses or regulatory approvals. See [implementation-status.md](./implementation-status.md).
+This is the target application workflow. The backend supports startup draft creation, listing, reading, updating, submission, and status history, including server-generated tracking IDs. The React application screens still simulate these flows with mock data; officer review, queries, document handling, and notifications are not yet implemented end to end. Portal outcomes must not be described as statutory AYUSH licences or regulatory approvals. See [implementation-status.md](./implementation-status.md).
 
 ## 1. Introduction
 

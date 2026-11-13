@@ -1,6 +1,6 @@
 # Database Workflow and Data Flow Mapping
 
-This document describes the intended data flow and transaction boundaries; it is not a report of working runtime integrations. Current pages and contexts remain mock-backed, the API wrappers are not consumed, and the backend has no business routes. The sequence below is aligned to the agreed API contract where endpoints are shown. See [implementation-status.md](./implementation-status.md).
+This document describes the intended data flow and transaction boundaries; most rows and the sequence below are design mappings, not working runtime integrations. The backend now has auth, startup profile, core application, and resources routes. The public and startup resources pages consume the resources API, but the main auth/application contexts and review workflows remain mock-backed. The API contract is still a draft. See [implementation-status.md](./implementation-status.md).
 
 ## 1. Overview
 
@@ -22,7 +22,9 @@ This document defines how frontend actions, component state transitions, and use
 
 ---
 
-## 3. End-to-End Application Data Flow
+## 3. Intended End-to-End Application Data Flow
+
+The sequence diagram is the target workflow. File upload, officer review, queries, and notification API calls shown here are not implemented yet. The current implemented startup application endpoints cover draft creation, list/detail, update, submit, and status history; they are not yet connected to the React application context.
 
 ```mermaid
 sequenceDiagram

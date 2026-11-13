@@ -1132,7 +1132,7 @@ export const STATUS_COLORS = {
 - The API client wrappers are prepared against the endpoint shapes in this document, but no screen or context currently calls them.
 - The client-side `generateAppId()` helper was removed. The local demo uses an internal `mock-…` record ID and leaves `trackingNumber` empty; only the backend may generate the database application ID in the required formatted string.
 - Native `alert()` feedback was removed from `NewApplication.jsx` and replaced with inline feedback. Other prototype pages may still contain placeholder alerts.
-- `AuthContext`, `ApplicationContext`, and `NotificationContext` remain mock-backed until the backend endpoints are implemented.
+- Auth, startup profile, and core application endpoints are implemented, but `AuthContext`, `ApplicationContext`, and `NotificationContext` remain mock-backed until their screens are connected to those routes. Officer/query/notification/document/admin/category backend routes are still incomplete.
 - The seven-step form keeps its complete data in the local demo record. Map its category selection to the database category `code`; application-specific regulatory and business answers belong in JSONB `regulatoryDetails` and `businessDetailsSnapshot`. Founder records belong to the startup profile and cannot hold application-specific founder snapshots in this schema.
 - See [implementation-status.md](./implementation-status.md) for backend readiness and SQL/Prisma alignment gaps.
 
