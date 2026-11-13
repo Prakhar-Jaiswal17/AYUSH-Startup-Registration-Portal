@@ -1,6 +1,6 @@
 # Database Workflow and Data Flow Mapping
 
-This document describes the intended data flow and transaction boundaries; rows and sequence steps not called out as live remain design mappings. The backend has auth, startup profile, core application, resources, and officer-review routes. Real auth flows, startup profile and application flows, and officer/admin queue, assignment, review-start, and decision actions are connected for API sessions. Demo application flows remain local. Document, clarification, and notification list/read workflows remain unconnected. The API contract is still a draft. See [implementation-status.md](./implementation-status.md).
+This document describes the intended data flow and transaction boundaries; rows and sequence steps not called out as live remain design mappings. The backend has auth, startup profile, core application, resources, officer-review, and clarification-query routes. Real auth flows, startup profile/application flows, and officer/admin review actions use the API. Clarification endpoints are implemented but the applicant/officer screens do not consume them yet. Demo application flows remain local. Document and notification list/read workflows remain unconnected. The API contract is still a draft. See [implementation-status.md](./implementation-status.md).
 
 ## 1. Overview
 
@@ -24,7 +24,7 @@ This document defines how frontend actions, component state transitions, and use
 
 ## 3. Intended End-to-End Application Data Flow
 
-The sequence diagram is the target workflow. For live startup accounts, the React application context consumes draft create/list/detail/update/submit endpoints; startup profile loading uses `/api/startups/me`. Officer/admin review queues, assignment, review start, and approve/reject actions are connected. File upload/verification and clarification workflows are not connected, and notification list/read APIs are not implemented.
+The sequence diagram is the target workflow. For live startup accounts, the React application context consumes draft create/list/detail/update/submit endpoints; startup profile loading uses `/api/startups/me`. Officer/admin review queues, assignment, review start, and approve/reject actions are connected. Clarification APIs support the request/response/resolution cycle but are not called by the screens yet. File upload/verification and notification list/read APIs are not implemented.
 
 ```mermaid
 sequenceDiagram

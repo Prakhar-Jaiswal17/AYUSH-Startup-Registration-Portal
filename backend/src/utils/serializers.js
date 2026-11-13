@@ -24,6 +24,20 @@ function startupDto(startup) {
     }
 }
 
+function queryDto(query) {
+    const isResolved = query.status === 'Resolved'
+    return {
+        id: query.id,
+        applicationId: query.applicationId,
+        queryText: query.queryText,
+        applicantResponse: query.responseText,
+        status: isResolved ? 'RESOLVED' : 'PENDING',
+        isResolved,
+        createdAt: query.createdAt,
+        resolvedAt: query.resolvedAt,
+    }
+}
+
 function applicationDto(application) {
     const status = STATUS_TO_API[application.status] || application.status
     return {
@@ -46,11 +60,11 @@ function applicationDto(application) {
             changedBy: h.actor ? { id: h.actor.id, name: h.actor.fullName } : (h.officerName ? { name: h.officerName } : null),
             createdAt: h.createdAt,
         })) || [],
-        queries: application.queries?.map(q => ({ id: q.id, queryText: q.queryText, applicantResponse: q.responseText, isResolved: q.status === 'Resolved', createdAt: q.createdAt })) || [],
+        queries: application.queries?.map(queryDto) || [],
         submittedAt: application.submittedAt,
         createdAt: application.createdAt,
         lastUpdated: application.lastUpdated,
     }
 }
 
-module.exports = { userDto, startupDto, applicationDto, STATUS_TO_API }
+module.exports = { userDto, startupDto, applicationDto, queryDto, STATUS_TO_API }

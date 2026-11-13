@@ -673,7 +673,7 @@ Delete an uploaded document.
 
 ### `POST /api/applications/:id/queries`
 
-Officer raises a clarification query. Status transitions to `QUERY_RAISED`.
+An assigned officer or ADMIN raises a clarification query while the application is `UNDER_REVIEW`. Status transitions to `QUERY_RAISED`.
 
 **Auth:** `OFFICER`, `ADMIN`
 
@@ -684,6 +684,8 @@ Officer raises a clarification query. Status transitions to `QUERY_RAISED`.
 }
 ```
 
+`queryText` must be non-empty and no more than 4000 characters.
+
 **Success `201`:**
 ```json
 {
@@ -692,13 +694,16 @@ Officer raises a clarification query. Status transitions to `QUERY_RAISED`.
     "id": "uuid",
     "applicationId": "APP-2025-007",
     "queryText": "Please provide audited financial statements for FY 2023-24.",
+    "applicantResponse": null,
     "status": "PENDING",
-    "createdAt": "2025-11-11T14:00:00.000Z"
+    "isResolved": false,
+    "createdAt": "2025-11-11T14:00:00.000Z",
+    "resolvedAt": null
   }
 }
 ```
 
-**Notes:** Also updates `applications.status → QUERY_RAISED`, records status history, sends notification to startup.
+**Notes:** Also updates `applications.status → QUERY_RAISED`, records status history and an audit event, and creates a status-update notification for the startup.
 
 ---
 
@@ -706,9 +711,9 @@ Officer raises a clarification query. Status transitions to `QUERY_RAISED`.
 
 List all clarification queries for an application.
 
-**Auth:** `STARTUP` (own), `OFFICER`, `ADMIN`
+**Auth:** `STARTUP` (own), `OFFICER` (assigned), `ADMIN`
 
-**Success `200`:** Array of query objects including `applicantResponse` (mapped from `responseText`), `status`, and `resolvedAt`. The database does not store a response-submitted timestamp, so do not return `responseSubmittedAt`.
+**Success `200`:** Array of query objects including `applicationId`, `queryText`, `applicantResponse` (mapped from `responseText`), API `status` (`PENDING` or `RESOLVED`), `isResolved`, `createdAt`, and `resolvedAt`. The database does not store a response-submitted timestamp, so do not return `responseSubmittedAt`.
 
 ---
 
@@ -725,19 +730,23 @@ Startup submits a response to a clarification query.
 }
 ```
 
-**Success `200`:** Updated query object with `applicantResponse` set. The database does not store a response-submitted timestamp.
+`applicantResponse` must be non-empty and no more than 4000 characters. The query must still be `PENDING`, and the application must still be `QUERY_RAISED`.
+
+**Success `200`:** Updated query object with `applicantResponse` set. The application stays `QUERY_RAISED` until the applicant uses `POST /api/applications/:id/submit` to resubmit it. The database does not store a response-submitted timestamp.
 
 ---
 
 ### `PATCH /api/queries/:id/resolve`
 
-Officer marks a query as resolved.
+An assigned officer or ADMIN marks a query as resolved.
 
-**Auth:** `OFFICER`, `ADMIN`
+**Auth:** `OFFICER` (must be assigned to the application), `ADMIN`
 
 **Request body:** None
 
-**Success `200`:** Updated query with API `status: "RESOLVED"` and `resolvedAt` set. `isResolved` may be derived as `status === "RESOLVED"` if a client compatibility alias is needed.
+The query must still be `PENDING`.
+
+**Success `200`:** Updated query with API `status: "RESOLVED"` and `resolvedAt` set. `isResolved` is included as a compatibility alias. An audit event is recorded.
 
 ---
 
@@ -1174,7 +1183,7 @@ export const STATUS_COLORS = {
 - The API client wrappers follow the endpoint shapes in this document. The public and startup resources pages consume `resourceAPI`; `AuthContext` consumes auth and startup profile endpoints; applicant screens consume startup/application endpoints for live startup accounts. Officer/admin queues, assignment, review start, and decision actions are connected to the API. Demo flows remain local, and `NotificationContext` remains mock-backed.
 - The client-side `generateAppId()` helper was removed. The local demo uses an internal `mock-…` record ID and leaves `trackingNumber` empty; only the backend may generate the database application ID in the required formatted string.
 - Native `alert()` feedback was removed from `NewApplication.jsx` and replaced with inline feedback. Other prototype pages may still contain placeholder alerts.
-- Auth, startup profile, core application, officer queue, assignment, review-start, and decision endpoints are implemented. Real applicant flows and officer/admin review screens consume their APIs for live sessions. The seven-step form maps AYUSH labels to seeded category codes and stores regulatory/business answers in the documented JSON fields. Demo mode remains local. Query, notification-list/read, document, admin account-management/analytics, and category backend routes and UI integrations remain incomplete.
+- Auth, startup profile, core application, officer queue, assignment, review-start, decision, and clarification-query endpoints are implemented. Real applicant flows and officer/admin review screens consume their APIs for live sessions. Clarification endpoints are available, but the applicant/officer screens do not consume them yet. The seven-step form maps AYUSH labels to seeded category codes and stores regulatory/business answers in the documented JSON fields. Demo mode remains local. Notification-list/read, document, admin account-management/analytics, and category backend routes and UI integrations remain incomplete.
 - Application detail reads server status history, founders, and document metadata. The live applicant flow does not upload documents or respond to clarification queries because those APIs are not yet connected. The officer review page displays document metadata but does not open or verify files. Founder records belong to the startup profile and cannot hold application-specific founder snapshots in this schema.
 - See [implementation-status.md](./implementation-status.md) for backend readiness and SQL/Prisma alignment gaps.
 
