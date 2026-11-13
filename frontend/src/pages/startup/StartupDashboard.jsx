@@ -176,7 +176,7 @@ export default function StartupDashboard() {
                       <p className="text-xs text-text-secondary">
                         {app.status === 'Draft'
                           ? 'Complete and submit your draft application'
-                          : (isApiSession ? 'Clarification response is not connected yet' : 'Respond to clarification request')}
+                          : 'Respond to clarification request'}
                       </p>
                     </div>
                     <StatusBadge status={app.status} size="sm" />

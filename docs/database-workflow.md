@@ -1,6 +1,6 @@
 # Database Workflow and Data Flow Mapping
 
-This document describes the intended data flow and transaction boundaries; rows and sequence steps not called out as live remain design mappings. The backend has auth, startup profile, core application, resources, officer-review, and clarification-query routes. Real auth flows, startup profile/application flows, and officer/admin review actions use the API. Clarification endpoints are implemented but the applicant/officer screens do not consume them yet. Demo application flows remain local. Document and notification list/read workflows remain unconnected. The API contract is still a draft. See [implementation-status.md](./implementation-status.md).
+This document describes the intended data flow and transaction boundaries; rows and sequence steps not called out as live remain design mappings. The backend has auth, startup profile, core application, resources, officer-review, and clarification-query routes. Real auth flows, startup profile/application flows, officer/admin review actions, and clarification query actions use the API. The applicant and reviewer screens read and update clarification queries for API sessions. Demo application flows remain local. Document and notification list/read workflows remain unconnected. The API contract is still a draft. See [implementation-status.md](./implementation-status.md).
 
 ## 1. Overview
 

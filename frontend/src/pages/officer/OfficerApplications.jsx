@@ -130,7 +130,7 @@ export default function OfficerApplications() {
           <div>
             <h1 className="text-2xl font-bold text-text-primary">Application Review Queue</h1>
             <p className="text-text-secondary text-sm mt-0.5">
-              {isApiSession ? 'Review applications assigned to you. Document and clarification workflows are not connected yet.' : 'Review, verify documentation, and process startup facilitation registrations.'}
+              {isApiSession ? 'Review applications assigned to you and manage clarification requests. Document verification is not connected yet.' : 'Review, verify documentation, and process startup facilitation registrations.'}
             </p>
           </div>
           {!isApiSession && rawList.length === 0 && (

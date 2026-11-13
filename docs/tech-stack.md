@@ -6,7 +6,7 @@ The project uses JavaScript throughout; TypeScript is not part of the plan.
 
 | Layer | Technology | Current use |
 |---|---|---|
-| Website | React 19, Vite, React Router, Tailwind CSS, Axios | Public/startup resources and live applicant profile/application flows call the API. Officer/admin queue, assignment, review-start, and decision workflows are connected for API sessions; clarification APIs exist but the screens are not connected. Demo accounts remain local. Document and notification workflows are unconnected. |
+| Website | React 19, Vite, React Router, Tailwind CSS, Axios | Public/startup resources and live applicant profile/application flows call the API. Officer/admin queue, assignment, review-start, decision, and clarification workflows are connected for API sessions. Demo accounts remain local. Document and notification workflows are unconnected. |
 | Desktop | Electron | Development launcher for the same React/Vite website; not a separately implemented or packaged application. |
 | API | Node.js, Express 5, JavaScript CommonJS | Health, authentication, startup profile/application, officer/admin review queue, officer assignment, review-start, decision, clarification query, and resources endpoints. |
 | Database | PostgreSQL | Relational persistence matching the agreed SQL design. |
@@ -16,7 +16,7 @@ The project uses JavaScript throughout; TypeScript is not part of the plan.
 
 ## Current integration
 
-- `frontend/src/services/api.js` holds Axios wrappers. Auth, startup profile, application, officer review, and resources wrappers are consumed by live frontend flows; query wrappers exist, but their screens are not connected. Document, admin account-management, notification, and category workflows are also not connected.
+- `frontend/src/services/api.js` holds Axios wrappers. Auth, startup profile, application, officer review, clarification, and resources wrappers are consumed by live frontend flows. Document, admin account-management, notification, and category workflows are not connected.
 - `AuthContext` uses the backend for real login, registration, logout, session restoration, and startup profile loading. `ApplicationContext` loads live applicant applications or reviewer queues and supports startup draft/submission and reviewer assignment/review/decision actions. Demo role sign-in and demo application state remain local. `NotificationContext` remains mock-backed.
 - Backend environment settings, including `DATABASE_URL`, belong in `backend/.env`. Keep real `.env` files private. Frontend `VITE_*` values are exposed to the browser and must not contain secrets.
 - The Electron launcher loads the website and therefore inherits whichever website integrations are active.

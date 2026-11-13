@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, FileText, Upload, Send, RefreshCw } from 'lucide-react';
 import { useApplications } from '../../context/ApplicationContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { useAuth } from '../../context/AuthContext';
-import { applicationAPI, getApiErrorMessage } from '../../services/api';
+import { applicationAPI, getApiErrorMessage, queryAPI } from '../../services/api';
 import { applicationDtoToView } from '../../utils/applicationMappers';
 import StatusBadge from '../../components/common/StatusBadge';
 import Timeline from '../../components/common/Timeline';
@@ -21,17 +21,33 @@ const tabs = ['Overview', 'Documents', 'Timeline', 'Clarification'];
 export default function ApplicationDetail() {
   const { id } = useParams();
   const { user, startup: currentStartup, isApiSession } = useAuth();
-  const { getApplicationById, getDocumentsByApplication, updateApplicationStatus, addDocument } = useApplications();
+  const { getApplicationById, getDocumentsByApplication, updateApplicationStatus, addDocument, submitApplication, refreshApplications } = useApplications();
   const { addNotification } = useNotifications();
   const [activeTab, setActiveTab] = useState('Overview');
   const [showUpload, setShowUpload] = useState(false);
   const [clarificationText, setClarificationText] = useState('');
+  const [clarificationResponses, setClarificationResponses] = useState({});
+  const [clarificationSavingId, setClarificationSavingId] = useState('');
+  const [clarificationSubmitting, setClarificationSubmitting] = useState(false);
+  const [clarificationError, setClarificationError] = useState('');
   const [uploading, setUploading] = useState(false);
   const [uploadName, setUploadName] = useState('');
   const [apiApplication, setApiApplication] = useState(null);
   const [loading, setLoading] = useState(isApiSession);
   const [loadError, setLoadError] = useState('');
   const [retryCount, setRetryCount] = useState(0);
+
+  const fetchApiApplication = useCallback(async () => {
+    const [applicationResponse, queriesResponse] = await Promise.all([
+      applicationAPI.getById(id),
+      queryAPI.getByApplication(id),
+    ]);
+    const application = applicationResponse?.data?.data;
+    const queries = queriesResponse?.data?.data;
+    if (!application) throw new Error('Application details were not returned by the server.');
+    if (!Array.isArray(queries)) throw new Error('Clarification queries were not returned by the server.');
+    return applicationDtoToView({ ...application, queries });
+  }, [id]);
 
   useEffect(() => {
     if (!isApiSession) {
@@ -44,11 +60,9 @@ export default function ApplicationDetail() {
     let active = true;
     setLoading(true);
     setLoadError('');
-    applicationAPI.getById(id)
-      .then((response) => {
-        const data = response?.data?.data;
-        if (!data) throw new Error('Application details were not returned by the server.');
-        if (active) setApiApplication(applicationDtoToView(data));
+    fetchApiApplication()
+      .then((application) => {
+        if (active) setApiApplication(application);
       })
       .catch((error) => {
         if (active) setLoadError(error?.apiMessage || getApiErrorMessage(error, 'Unable to load this application.'));
@@ -58,7 +72,7 @@ export default function ApplicationDetail() {
       });
 
     return () => { active = false; };
-  }, [id, isApiSession, retryCount]);
+  }, [fetchApiApplication, isApiSession, retryCount]);
 
   const app = isApiSession ? apiApplication : getApplicationById(id);
   const docs = isApiSession ? (app?.documents || []) : getDocumentsByApplication(id);
@@ -104,15 +118,52 @@ export default function ApplicationDetail() {
   }
 
   const visibleTabs = app.status === 'Clarification Required' ? tabs : tabs.filter((tab) => tab !== 'Clarification');
-  const latestQuery = app.queries?.[app.queries.length - 1];
+  const queries = app.queries || [];
+  const pendingQueries = queries.filter((query) => query.status === 'PENDING');
+  const latestQuery = queries[queries.length - 1];
+  const canResubmitApiApplication = queries.length > 0
+    && queries.every((query) => query.status === 'RESOLVED' || Boolean(query.applicantResponse?.trim()));
   const clarificationEvent = [...(app.timeline || [])].reverse().find((event) => event.status === 'Clarification Required');
 
-  const handleResubmit = () => {
+  const handleMockResubmit = () => {
     if (!clarificationText.trim()) return;
     updateApplicationStatus(id, 'Resubmitted', clarificationText, user?.name);
     addNotification({ type: 'status_update', title: 'Application Resubmitted', message: `Your application ${id} has been resubmitted.`, applicationId: id });
     setClarificationText('');
     setActiveTab('Timeline');
+  };
+
+  const handleApiResponse = async (query) => {
+    const applicantResponse = clarificationResponses[query.id]?.trim();
+    if (!applicantResponse || clarificationSavingId) return;
+    setClarificationSavingId(query.id);
+    setClarificationError('');
+    try {
+      await queryAPI.respond(query.id, { applicantResponse });
+      setApiApplication(await fetchApiApplication());
+      setClarificationResponses((current) => ({ ...current, [query.id]: '' }));
+      await refreshApplications().catch(() => {});
+    } catch (error) {
+      setClarificationError(error?.apiMessage || getApiErrorMessage(error, 'Unable to submit your response.'));
+    } finally {
+      setClarificationSavingId('');
+    }
+  };
+
+  const handleApiResubmit = async () => {
+    if (!canResubmitApiApplication || clarificationSubmitting) return;
+    setClarificationSubmitting(true);
+    setClarificationError('');
+    try {
+      await submitApplication(id);
+      setApiApplication(await fetchApiApplication());
+      setClarificationText('');
+      setActiveTab('Timeline');
+    } catch (error) {
+      setClarificationError(error?.apiMessage || getApiErrorMessage(error, 'Unable to resubmit this application.'));
+    } finally {
+      setClarificationSubmitting(false);
+    }
   };
 
   const handleUpload = () => {
@@ -237,19 +288,73 @@ export default function ApplicationDetail() {
 
         {activeTab === 'Clarification' && app.status === 'Clarification Required' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-            <div className="card p-6 border-l-4 border-l-warning">
-              <h3 className="font-semibold text-text-primary mb-2">Clarification Requested</h3>
-              <p className="text-sm text-text-secondary">{latestQuery?.queryText || clarificationEvent?.remark || 'A clarification was requested for this application.'}</p>
-              {(latestQuery?.createdAt || clarificationEvent?.date) && <p className="text-xs text-text-secondary mt-2">{latestQuery?.createdAt ? formatDate(latestQuery.createdAt) : formatDate(clarificationEvent.date)}</p>}
-              {latestQuery?.applicantResponse && <p className="text-sm text-text-primary mt-4"><span className="font-medium">Your response:</span> {latestQuery.applicantResponse}</p>}
-            </div>
             {isApiSession ? (
-              <div className="card p-5 text-sm text-text-secondary">Responding to clarification requests is not connected yet. Your application remains available to view here.</div>
+              <div className="space-y-4">
+                {queries.map((query) => (
+                  <div key={query.id} className="card p-6 border-l-4 border-l-warning">
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="font-semibold text-text-primary">Clarification Requested</h3>
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${query.status === 'RESOLVED' ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
+                        {query.status === 'RESOLVED' ? 'Resolved' : 'Pending'}
+                      </span>
+                    </div>
+                    <p className="text-sm text-text-secondary mt-2 whitespace-pre-wrap">{query.queryText}</p>
+                    {query.createdAt && <p className="text-xs text-text-secondary mt-2">Requested {formatDate(query.createdAt)}</p>}
+                    {query.applicantResponse ? (
+                      <p className="text-sm text-text-primary mt-4 whitespace-pre-wrap"><span className="font-medium">Your response:</span> {query.applicantResponse}</p>
+                    ) : query.status === 'PENDING' ? (
+                      <div className="mt-4">
+                        <label htmlFor={`clarification-${query.id}`} className="label">Your Response</label>
+                        <textarea
+                          id={`clarification-${query.id}`}
+                          value={clarificationResponses[query.id] || ''}
+                          onChange={(event) => setClarificationResponses((current) => ({ ...current, [query.id]: event.target.value }))}
+                          maxLength={4000}
+                          placeholder="Provide the requested information..."
+                          className="input-field min-h-[120px] resize-y"
+                        />
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="text-xs text-text-secondary">{(clarificationResponses[query.id] || '').length}/4000</span>
+                          <button
+                            onClick={() => handleApiResponse(query)}
+                            disabled={!clarificationResponses[query.id]?.trim() || Boolean(clarificationSavingId)}
+                            className="btn-primary inline-flex items-center gap-2 disabled:opacity-50"
+                          >
+                            <Send className="w-4 h-4" />
+                            {clarificationSavingId === query.id ? 'Sending…' : 'Send Response'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : <p className="text-sm text-text-secondary mt-4">This query has been resolved.</p>}
+                  </div>
+                ))}
+                {queries.length === 0 && <div className="card p-5 text-sm text-text-secondary">No clarification details were returned for this application.</div>}
+                {clarificationError && <p role="alert" className="text-sm text-error">{clarificationError}</p>}
+                {canResubmitApiApplication && (
+                  <div className="card p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <p className="text-sm text-text-secondary">Your responses are ready. Resubmit the application to return it to review.</p>
+                    <button onClick={handleApiResubmit} disabled={clarificationSubmitting} className="btn-primary inline-flex items-center justify-center gap-2 disabled:opacity-50">
+                      <Send className="w-4 h-4" /> {clarificationSubmitting ? 'Resubmitting…' : 'Resubmit Application'}
+                    </button>
+                  </div>
+                )}
+                {pendingQueries.length > 0 && !canResubmitApiApplication && (
+                  <p className="text-xs text-text-secondary">Respond to each pending clarification before resubmitting.</p>
+                )}
+              </div>
             ) : (
-              <div className="card p-6">
-                <h3 className="font-semibold text-text-primary mb-3">Your Response</h3>
-                <textarea value={clarificationText} onChange={(event) => setClarificationText(event.target.value)} placeholder="Provide your response and any additional information..." className="input-field min-h-[120px] resize-y" />
-                <div className="flex justify-end mt-4"><button onClick={handleResubmit} disabled={!clarificationText.trim()} className="btn-primary inline-flex items-center gap-2"><Send className="w-4 h-4" /> Resubmit Application</button></div>
+              <div className="space-y-4">
+                <div className="card p-6 border-l-4 border-l-warning">
+                  <h3 className="font-semibold text-text-primary mb-2">Clarification Requested</h3>
+                  <p className="text-sm text-text-secondary">{latestQuery?.queryText || clarificationEvent?.remark || 'A clarification was requested for this application.'}</p>
+                  {(latestQuery?.createdAt || clarificationEvent?.date) && <p className="text-xs text-text-secondary mt-2">{latestQuery?.createdAt ? formatDate(latestQuery.createdAt) : formatDate(clarificationEvent.date)}</p>}
+                  {latestQuery?.applicantResponse && <p className="text-sm text-text-primary mt-4"><span className="font-medium">Your response:</span> {latestQuery.applicantResponse}</p>}
+                </div>
+                <div className="card p-6">
+                  <h3 className="font-semibold text-text-primary mb-3">Your Response</h3>
+                  <textarea value={clarificationText} onChange={(event) => setClarificationText(event.target.value)} placeholder="Provide your response and any additional information..." className="input-field min-h-[120px] resize-y" />
+                  <div className="flex justify-end mt-4"><button onClick={handleMockResubmit} disabled={!clarificationText.trim()} className="btn-primary inline-flex items-center gap-2"><Send className="w-4 h-4" /> Resubmit Application</button></div>
+                </div>
               </div>
             )}
           </motion.div>

@@ -6,7 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useApplications } from '../../context/ApplicationContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { mockStartups } from '../../data/mockData';
-import { applicationAPI, startupAPI, getApiErrorMessage } from '../../services/api';
+import { applicationAPI, startupAPI, officerAPI, queryAPI, getApiErrorMessage } from '../../services/api';
 import { applicationDtoToView, getStartupFounders } from '../../utils/applicationMappers';
 import StatusBadge from '../../components/common/StatusBadge';
 import Timeline from '../../components/common/Timeline';
@@ -18,7 +18,7 @@ import { formatDate } from '../../utils/helpers';
 export default function OfficerApplicationReview() {
   const { id } = useParams();
   const { user, isApiSession } = useAuth();
-  const { getApplicationById, getDocumentsByApplication, updateApplicationStatus, updateDocumentStatus, startApplicationReview, decideApplication } = useApplications();
+  const { getApplicationById, getDocumentsByApplication, updateApplicationStatus, updateDocumentStatus, startApplicationReview, decideApplication, refreshApplications } = useApplications();
   const { addNotification } = useNotifications();
 
   const [activeTab, setActiveTab] = useState('info');
@@ -37,10 +37,15 @@ export default function OfficerApplicationReview() {
     setDetailLoading(true);
     setDetailError('');
     try {
-      const response = await applicationAPI.getById(id);
+      const [response, queriesResponse] = await Promise.all([
+        applicationAPI.getById(id),
+        queryAPI.getByApplication(id),
+      ]);
       const data = response?.data?.data;
+      const queries = queriesResponse?.data?.data;
       if (!data) throw new Error('Application details were not returned by the server.');
-      setApiApplication(applicationDtoToView(data));
+      if (!Array.isArray(queries)) throw new Error('Clarification queries were not returned by the server.');
+      setApiApplication(applicationDtoToView({ ...data, queries }));
       if (data.startup?.id) {
         try {
           const profileResponse = await startupAPI.getProfile(data.startup.id);
@@ -147,6 +152,41 @@ export default function OfficerApplicationReview() {
       await loadApiDetails();
     } catch (error) {
       setActionError(error?.apiMessage || getApiErrorMessage(error, 'Unable to start the review.'));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const requestClarification = async () => {
+    if (!remarks.trim() || actionLoading) return;
+    if (!isApiSession) {
+      await performAction('Clarification Required', remarks);
+      return;
+    }
+
+    setActionLoading(true);
+    setActionError('');
+    try {
+      await officerAPI.requestClarification(id, { queryText: remarks.trim() });
+      await Promise.all([loadApiDetails(), refreshApplications().catch(() => {})]);
+      setShowClarifyModal(false);
+      setRemarks('');
+    } catch (error) {
+      setActionError(error?.apiMessage || getApiErrorMessage(error, 'Unable to request clarification.'));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const resolveClarification = async (queryId) => {
+    if (actionLoading) return;
+    setActionLoading(true);
+    setActionError('');
+    try {
+      await queryAPI.resolve(queryId);
+      await Promise.all([loadApiDetails(), refreshApplications().catch(() => {})]);
+    } catch (error) {
+      setActionError(error?.apiMessage || getApiErrorMessage(error, 'Unable to resolve this clarification.'));
     } finally {
       setActionLoading(false);
     }
@@ -319,12 +359,13 @@ export default function OfficerApplicationReview() {
                   {canStartReview && <button onClick={beginReview} disabled={actionLoading} className="w-full btn-primary text-sm disabled:opacity-50">{actionLoading ? 'Starting review…' : 'Start Review'}</button>}
                   {canDecide && (
                     <>
+                      <button onClick={() => setShowClarifyModal(true)} disabled={actionLoading} className="w-full btn-secondary text-sm inline-flex items-center justify-center gap-2 disabled:opacity-50"><MessageSquare className="w-4 h-4" /> Request Clarification</button>
                       <button onClick={() => setShowApproveModal(true)} disabled={actionLoading} className="w-full btn-primary text-sm inline-flex items-center justify-center gap-2 disabled:opacity-50"><CheckCircle className="w-4 h-4" /> Approve Application</button>
                       <button onClick={() => setShowRejectModal(true)} disabled={actionLoading} className="w-full btn-danger text-sm inline-flex items-center justify-center gap-2 disabled:opacity-50"><XCircle className="w-4 h-4" /> Reject Application</button>
                     </>
                   )}
                   {!canStartReview && !canDecide && <p className="text-sm text-text-secondary">Review actions are unavailable for this application status.</p>}
-                  <p className="text-xs text-text-secondary">Clarification and document verification actions will be connected in a later workflow task.</p>
+                  <p className="text-xs text-text-secondary">Document verification is not connected yet.</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -341,6 +382,31 @@ export default function OfficerApplicationReview() {
               )}
             </div>
 
+            {isApiSession && app.queries?.length > 0 && (
+              <div className="card p-6 space-y-4">
+                <h3 className="font-semibold text-text-primary">Clarification Queries</h3>
+                {app.queries.map((query) => (
+                  <div key={query.id} className="rounded-lg border border-border-light p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-sm font-medium text-text-primary">{query.queryText}</p>
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ${query.status === 'RESOLVED' ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
+                        {query.status === 'RESOLVED' ? 'Resolved' : 'Pending'}
+                      </span>
+                    </div>
+                    {query.createdAt && <p className="text-xs text-text-secondary">Requested {formatDate(query.createdAt)}</p>}
+                    {query.applicantResponse
+                      ? <div className="rounded-md bg-gray-50 p-3"><p className="text-xs font-medium text-text-secondary mb-1">Startup response</p><p className="text-sm text-text-primary whitespace-pre-wrap">{query.applicantResponse}</p></div>
+                      : <p className="text-sm text-text-secondary">Waiting for the startup to respond.</p>}
+                    {query.status === 'PENDING' && (
+                      <button onClick={() => resolveClarification(query.id)} disabled={actionLoading} className="btn-secondary text-sm disabled:opacity-50">
+                        {actionLoading ? 'Updating…' : 'Mark Resolved'}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Timeline */}
             <div className="card p-6">
               <h3 className="font-semibold text-text-primary mb-4">Application Timeline</h3>
@@ -353,10 +419,11 @@ export default function OfficerApplicationReview() {
         <Modal isOpen={showClarifyModal} onClose={() => setShowClarifyModal(false)} title="Request Clarification" size="md">
           <div className="space-y-4">
             <p className="text-sm text-text-secondary">Specify what information or documents the startup needs to provide.</p>
-            <textarea value={remarks} onChange={e => setRemarks(e.target.value)} placeholder="Enter clarification details..." className="input-field min-h-[120px] resize-y" />
+            <textarea value={remarks} onChange={e => setRemarks(e.target.value)} maxLength={4000} placeholder="Enter clarification details..." className="input-field min-h-[120px] resize-y" />
+            <p className="text-xs text-text-secondary text-right">{remarks.length}/4000</p>
             <div className="flex gap-3 justify-end">
               <button onClick={() => setShowClarifyModal(false)} className="btn-ghost text-sm">Cancel</button>
-              <button onClick={() => performAction('Clarification Required', remarks)} disabled={!remarks.trim() || actionLoading} className="btn-secondary text-sm">
+              <button onClick={requestClarification} disabled={!remarks.trim() || actionLoading} className="btn-secondary text-sm">
                 {actionLoading ? 'Sending...' : 'Send Request'}
               </button>
             </div>

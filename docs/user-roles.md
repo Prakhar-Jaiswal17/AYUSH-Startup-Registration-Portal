@@ -1,6 +1,6 @@
 # User Roles, Permissions, and Use Case Analysis
 
-This document describes target roles and permissions and notes the live API behavior. Real login, registration, logout, and session restoration are connected to `AuthContext`; live applicant profile/application flows use the backend. Officers can load assigned applications, start review, decide applications, and use clarification APIs; startups can list and respond to queries through the API. Admins can load the non-draft queue, assign officers, and use review actions. Clarification screens are not connected yet. Demo-role sign-in and demo workflows remain local. Document upload/verification and notification screens/APIs remain incomplete. See [implementation-status.md](./implementation-status.md).
+This document describes target roles and permissions and notes the live API behavior. Real login, registration, logout, and session restoration are connected to `AuthContext`; live applicant profile/application flows use the backend. Startups can view and respond to clarification queries and resubmit applications. Officers can load assigned applications, start review, decide applications, and raise or resolve queries. Admins can load the non-draft queue, assign officers, and use review actions. Demo-role sign-in and demo workflows remain local. Document upload/verification and notification screens/APIs remain incomplete. See [implementation-status.md](./implementation-status.md).
 
 ## 1. Overview of Stakeholders
 
