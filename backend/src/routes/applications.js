@@ -1,7 +1,7 @@
 const express = require('express')
 const { prisma } = require('../db/prisma')
 const { authenticate, allowRoles } = require('../middleware/auth')
-const { asyncHandler, httpError, requireFields } = require('../utils/http')
+const { asyncHandler, httpError, requireFields, requireObjectBody } = require('../utils/http')
 const { applicationDto, STATUS_TO_API } = require('../utils/serializers')
 const { recordAudit } = require('../utils/audit')
 const { parseStartupInput, parseFounders, saveFounders, startupInclude } = require('./startups')
@@ -26,6 +26,12 @@ function parsePage(query) {
 
 function plainObject(value, field) {
     if (value === undefined) return undefined
+    if (!value || typeof value !== 'object' || Array.isArray(value)) throw httpError(422, 'Validation failed', { [field]: 'Must be a JSON object.' })
+    return value
+}
+
+function optionalObject(value, field) {
+    if (value === undefined) return {}
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw httpError(422, 'Validation failed', { [field]: 'Must be a JSON object.' })
     return value
 }
@@ -63,8 +69,9 @@ async function assertApplicationAccess(applicationId, user) {
 }
 
 router.post('/', authenticate, allowRoles('startup'), asyncHandler(async (req, res) => {
+    requireObjectBody(req.body)
     requireFields(req.body, ['categoryCode'])
-    const details = req.body.startupDetails || {}
+    const details = optionalObject(req.body.startupDetails, 'startupDetails')
     const founders = parseFounders(req.body.founders)
     const regulatory = plainObject(req.body.regulatoryInfo, 'regulatoryInfo')
     const business = plainObject(req.body.businessInfo, 'businessInfo')
@@ -137,10 +144,11 @@ router.get('/:id', authenticate, asyncHandler(async (req, res) => {
 }))
 
 router.put('/:id', authenticate, allowRoles('startup'), asyncHandler(async (req, res) => {
+    requireObjectBody(req.body)
     const access = await assertApplicationAccess(req.params.id, req.user)
     const current = await prisma.application.findUnique({ where: { id: access.id }, include: { startup: true } })
     if (!['Draft', 'Clarification Required'].includes(current.status)) throw httpError(403, 'Only draft or query-raised applications can be updated.')
-    const details = req.body.startupDetails || {}
+    const details = optionalObject(req.body.startupDetails, 'startupDetails')
     const founders = parseFounders(req.body.founders)
     const regulatory = plainObject(req.body.regulatoryInfo, 'regulatoryInfo')
     const business = plainObject(req.body.businessInfo, 'businessInfo')

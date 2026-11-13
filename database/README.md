@@ -47,9 +47,12 @@ npm run db:validate
 npm run db:generate
 npm run db:migrate
 npm run db:status
+npm run db:seed
 ```
 
 `db:migrate` is for local development and applies pending migrations. Do not run `schema.sql` against a database containing data: that script drops and recreates its tables. For a fresh local database, either use the Prisma migrations or follow the SQL setup below; do not apply both schema-creation paths to the same database.
+
+`db:seed` safely inserts any missing AYUSH category rows required by startup profiles and applications. It does not clear or replace existing data and does not create demo users. The standalone `seed.sql` below is for the SQL-script setup path and truncates existing tables; use it only on a disposable database.
 
 ### Prerequisites
 - **PostgreSQL 14+** (Tested and verified on PostgreSQL 18.6).
