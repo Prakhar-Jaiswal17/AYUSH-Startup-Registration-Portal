@@ -13,11 +13,15 @@ router.post('/register', asyncHandler(async (req, res) => {
     const name = req.body.name.trim()
     const email = req.body.email.trim().toLowerCase()
     const password = req.body.password
+    if (req.body.phone !== undefined && req.body.phone !== null && typeof req.body.phone !== 'string') {
+        throw httpError(422, 'Validation failed', { phone: 'Must be a string.' })
+    }
     const phone = typeof req.body.phone === 'string' && req.body.phone.trim() ? req.body.phone.trim() : null
     const fields = {}
     if (name.length > 255) fields.name = 'Must be 255 characters or fewer.'
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 255) fields.email = 'Enter a valid email address.'
     if (password.length < 8 || Buffer.byteLength(password, 'utf8') > 72) fields.password = 'Must be at least 8 characters and no more than 72 UTF-8 bytes.'
+    if (phone && phone.length > 50) fields.phone = 'Must be 50 characters or fewer.'
     if (Object.keys(fields).length) throw httpError(422, 'Validation failed', fields)
 
     const passwordHash = await bcrypt.hash(password, 12)

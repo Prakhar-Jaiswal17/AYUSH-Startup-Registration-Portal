@@ -8,6 +8,11 @@ const { recordAudit } = require('../utils/audit')
 const router = express.Router()
 const startupInclude = { founders: { orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }] } }
 const optionalStrings = ['legalName', 'brandName', 'incorporationType', 'registrationNumber', 'officialEmail', 'website', 'description', 'products', 'businessStage', 'targetMarket', 'operationalStatus', 'state', 'city', 'dpiitNumber']
+const stringLimits = {
+    legalName: 255, brandName: 255, incorporationType: 100, registrationNumber: 100,
+    officialEmail: 255, website: 255, businessStage: 50, targetMarket: 255,
+    operationalStatus: 50, state: 100, city: 100, dpiitNumber: 100,
+}
 const stringArrays = ['businessActivities', 'existingLicences']
 
 function parseStartupInput(body, current = null, isCreate = false) {
@@ -15,6 +20,7 @@ function parseStartupInput(body, current = null, isCreate = false) {
     for (const key of optionalStrings) {
         if (body[key] !== undefined) {
             if (typeof body[key] !== 'string' || !body[key].trim()) throw httpError(422, 'Validation failed', { [key]: 'Must be a non-empty string.' })
+            if (stringLimits[key] && body[key].trim().length > stringLimits[key]) throw httpError(422, 'Validation failed', { [key]: `Must be ${stringLimits[key]} characters or fewer.` })
             data[key] = body[key].trim()
         }
     }
@@ -36,8 +42,16 @@ function parseStartupInput(body, current = null, isCreate = false) {
             data.incorporationDate = date
         }
     }
-    const domain = body.ayushDomain ?? body.categoryCode
-    if (domain !== undefined) data.ayushDomain = domain
+    const domain = body.ayushDomain !== undefined ? body.ayushDomain : body.categoryCode
+    if (domain !== undefined) {
+        if (typeof domain !== 'string' || !domain.trim() || domain.trim().length > 50) {
+            throw httpError(422, 'Validation failed', { ayushDomain: 'Must be a non-empty category code of 50 characters or fewer.' })
+        }
+        data.ayushDomain = domain.trim()
+    }
+    if (data.officialEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.officialEmail)) {
+        throw httpError(422, 'Validation failed', { officialEmail: 'Enter a valid email address.' })
+    }
     if (isCreate) {
         if (!current) requireFields(data, ['legalName', 'brandName', 'ayushDomain', 'state'])
         else {
@@ -55,9 +69,13 @@ function parseFounders(founders) {
     return founders.map((founder, index) => {
         if (!founder || typeof founder !== 'object' || Array.isArray(founder)) throw httpError(422, 'Validation failed', { [`founders.${index}`]: 'Must be an object.' })
         const fields = {}
-        for (const key of ['name', 'designation', 'email', 'phone', 'qualification']) {
+        const limits = { name: 255, designation: 100, email: 255, phone: 50, qualification: 255 }
+        for (const [key, limit] of Object.entries(limits)) {
             if (typeof founder[key] !== 'string' || !founder[key].trim()) fields[`founders.${index}.${key}`] = 'This field is required.'
+            else if (founder[key].trim().length > limit) fields[`founders.${index}.${key}`] = `Must be ${limit} characters or fewer.`
         }
+        if (typeof founder.email === 'string' && founder.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(founder.email.trim())) fields[`founders.${index}.email`] = 'Enter a valid email address.'
+        if (founder.isPrimary !== undefined && typeof founder.isPrimary !== 'boolean') fields[`founders.${index}.isPrimary`] = 'Must be true or false.'
         if (Object.keys(fields).length) throw httpError(422, 'Validation failed', fields)
         return { name: founder.name.trim(), designation: founder.designation.trim(), email: founder.email.trim().toLowerCase(), phone: founder.phone.trim(), qualification: founder.qualification.trim(), isPrimary: founder.isPrimary === true }
     })
