@@ -1,6 +1,6 @@
 # Application Workflow and Lifecycle Specification
 
-This is the target application workflow. The backend supports startup draft creation, listing, reading, updating, submission, and status history, including server-generated tracking IDs. The React application screens still simulate these flows with mock data; officer review, queries, document handling, and notifications are not yet implemented end to end. Portal outcomes must not be described as statutory AYUSH licences or regulatory approvals. See [implementation-status.md](./implementation-status.md).
+This describes the application workflow. For live startup accounts, the React applicant screens load applications and status history from the backend and support server-backed draft creation, editing, and submission with tracking IDs. Demo accounts keep the local mock flow. Document upload, clarification responses, notifications, and officer review are not yet connected end to end. Portal outcomes must not be described as statutory AYUSH licences or regulatory approvals. See [implementation-status.md](./implementation-status.md).
 
 ## 1. Introduction
 

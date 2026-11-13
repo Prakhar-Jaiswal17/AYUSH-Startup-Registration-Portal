@@ -1,6 +1,6 @@
 # Project Collaborator Responsibilities
 
-**Repository review:** 13 November 2026. This describes the tracked implementation in the shared repository; it cannot account for uncommitted work on a teammate's machine.
+**Repository review:** 14 November 2026. This describes the tracked implementation in the shared repository; it cannot account for uncommitted work on a teammate's machine.
 
 The API proposal and endpoint ownership are detailed in [api-contract.md](./api-contract.md). The proposal remains subject to review by the relevant route owners.
 
@@ -12,9 +12,9 @@ The API proposal and endpoint ownership are detailed in [api-contract.md](./api-
 
 ## Arnav
 
-**Prepared:** frontend API wrappers exist in `frontend/src/services/api.js` for auth, applications, officer, queries, documents, admin, notifications, resources, and categories. The API wrappers alone do not mean those flows are integrated.
+**Implemented in the repository:** real login, registration, logout, and session restoration use the auth API; API roles are normalized for React, and the bearer token is stored for protected requests. Startup profile display and the applicant application list, detail, draft creation/editing, and submission use Prakhar's APIs for live accounts, including server-issued tracking IDs. Demo role sign-in and demo applicant workflows remain local. Frontend API wrappers also exist for officer, queries, documents, admin, notifications, resources, and categories; wrappers alone do not mean those flows are integrated.
 
-**Remaining:** connect React auth and startup profile/application screens to Prakhar's APIs and replace mock behavior in those flows; implement officer queue, assignment, review, and decision APIs; implement clarification-query and notification APIs; connect officer/admin review screens; collaborate with Prakhar on end-to-end workflow verification.
+**Remaining:** implement officer queue, assignment, review, and decision APIs; implement clarification-query and notification APIs; connect officer/admin review screens; collaborate with Prakhar on end-to-end workflow verification. Document upload/verification remains unassigned and requires coordination before its API and storage flow is built.
 
 ## Sarth
 

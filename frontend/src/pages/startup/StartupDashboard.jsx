@@ -1,7 +1,6 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FileText, Clock, CheckCircle2, Files, Plus, ArrowRight, AlertCircle, RotateCcw } from 'lucide-react';
+import { FileText, Clock, CheckCircle2, Files, Plus, ArrowRight, AlertCircle, RotateCcw, RefreshCw } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useApplications } from '../../context/ApplicationContext';
 import StatCard from '../../components/common/StatCard';
@@ -10,12 +9,16 @@ import PageTransition from '../../layouts/PageTransition';
 import { formatDate, formatRelativeTime } from '../../utils/helpers';
 
 export default function StartupDashboard() {
-  const { user, startup } = useAuth();
-  const { applications, documents, getApplicationsByStartup, getDocumentsByStartup, resetToMockData } = useApplications();
+  const { user, startup, isApiSession, startupLoading } = useAuth();
+  const { applications, documents, getApplicationsByStartup, getDocumentsByStartup, resetToMockData, applicationLoading, applicationError, refreshApplications } = useApplications();
 
-  const myApps = startup?.id ? getApplicationsByStartup(startup.id) : (applications || []).filter(a => a?.startupId === 'stp_001');
-  const myDocs = startup?.id ? getDocumentsByStartup(startup.id) : (documents || []).filter(d => d?.startupId === 'stp_001');
-  const pendingApps = myApps.filter(a => ['Submitted', 'Under Review'].includes(a?.status));
+  const myApps = isApiSession
+    ? (applications || [])
+    : (startup?.id ? getApplicationsByStartup(startup.id) : (applications || []).filter(a => a?.startupId === 'stp_001'));
+  const myDocs = isApiSession
+    ? []
+    : (startup?.id ? getDocumentsByStartup(startup.id) : (documents || []).filter(d => d?.startupId === 'stp_001'));
+  const pendingApps = myApps.filter(a => ['Submitted', 'Under Review', 'Resubmitted'].includes(a?.status));
   const approvedApps = myApps.filter(a => a?.status === 'Approved');
   const latestApp = myApps.length > 0 ? myApps.reduce((a, b) => new Date(b?.lastUpdated || 0) > new Date(a?.lastUpdated || 0) ? b : a) : null;
   const actionItems = myApps.filter(a => ['Draft', 'Clarification Required'].includes(a?.status));
@@ -42,10 +45,10 @@ export default function StartupDashboard() {
               Welcome back, {user?.name || 'Entrepreneur'}
             </motion.h1>
             <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="text-text-secondary mt-1">
-              {startup ? startup.brandName : 'VedaCure Wellness Pvt. Ltd.'} &middot; {today}
+              {startupLoading ? 'Loading startup profile…' : (startup?.brandName || (isApiSession ? 'Startup profile not created' : 'VedaCure Wellness Pvt. Ltd.'))} &middot; {today}
             </motion.p>
           </div>
-          {myApps.length === 0 && (
+          {!isApiSession && myApps.length === 0 && (
             <button
               onClick={resetToMockData}
               className="btn-secondary text-xs inline-flex items-center gap-1.5 self-start"
@@ -55,19 +58,28 @@ export default function StartupDashboard() {
           )}
         </div>
 
+        {applicationError && isApiSession && (
+          <div className="card p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3" role="alert">
+            <p className="text-sm text-error">{applicationError}</p>
+            <button onClick={() => refreshApplications().catch(() => {})} className="btn-secondary inline-flex items-center gap-2 text-sm"><RefreshCw className="w-4 h-4" /> Retry</button>
+          </div>
+        )}
+
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard icon={FileText} value={myApps.length} label="Total Applications" />
           <StatCard icon={Clock} value={pendingApps.length} label="Pending Review" />
           <StatCard icon={CheckCircle2} value={approvedApps.length} label="Approved" />
-          <StatCard icon={Files} value={myDocs.length} label="Documents" />
+          <StatCard icon={Files} value={isApiSession ? '—' : myDocs.length} label={isApiSession ? 'Documents (not connected)' : 'Documents'} />
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Current Application Status */}
           <div className="lg:col-span-2 card p-6">
             <h2 className="font-semibold text-text-primary mb-4">Current Application Status</h2>
-            {latestApp ? (
+            {applicationLoading && isApiSession ? (
+              <div role="status" className="text-sm text-text-secondary py-8 text-center">Loading your applications…</div>
+            ) : latestApp ? (
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <div>
@@ -76,7 +88,7 @@ export default function StartupDashboard() {
                   </div>
                   <StatusBadge status={latestApp.status} />
                 </div>
-                <p className="text-sm text-text-secondary mb-2">{latestApp.ayushDomain} &middot; Submitted {formatDate(latestApp.submittedAt)}</p>
+                <p className="text-sm text-text-secondary mb-2">{latestApp.ayushDomain}{latestApp.submittedAt ? ` · Submitted ${formatDate(latestApp.submittedAt)}` : ' · Draft'}</p>
                 <div className="w-full bg-gray-100 rounded-full h-2.5 mt-3">
                   <motion.div
                     className={`h-2.5 rounded-full ${latestApp.status === 'Rejected' ? 'bg-error' : 'bg-primary'}`}
@@ -111,10 +123,17 @@ export default function StartupDashboard() {
                 <div className="w-9 h-9 bg-primary/10 rounded-lg flex items-center justify-center"><Plus className="w-4 h-4 text-primary" /></div>
                 <div><p className="text-sm font-medium text-text-primary">New Application</p><p className="text-xs text-text-secondary">Start a new registration</p></div>
               </Link>
-              <Link to="/dashboard/documents" className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                <div className="w-9 h-9 bg-accent/10 rounded-lg flex items-center justify-center"><Files className="w-4 h-4 text-accent" /></div>
-                <div><p className="text-sm font-medium text-text-primary">Upload Documents</p><p className="text-xs text-text-secondary">Manage your files</p></div>
-              </Link>
+              {isApiSession ? (
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50" aria-disabled="true">
+                  <div className="w-9 h-9 bg-accent/10 rounded-lg flex items-center justify-center"><Files className="w-4 h-4 text-accent" /></div>
+                  <div><p className="text-sm font-medium text-text-primary">Document Upload</p><p className="text-xs text-text-secondary">Not connected yet</p></div>
+                </div>
+              ) : (
+                <Link to="/dashboard/documents" className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                  <div className="w-9 h-9 bg-accent/10 rounded-lg flex items-center justify-center"><Files className="w-4 h-4 text-accent" /></div>
+                  <div><p className="text-sm font-medium text-text-primary">Upload Documents</p><p className="text-xs text-text-secondary">Manage your files</p></div>
+                </Link>
+              )}
               <Link to="/dashboard/guidance" className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
                 <div className="w-9 h-9 bg-emerald-100 rounded-lg flex items-center justify-center"><FileText className="w-4 h-4 text-emerald-800" /></div>
                 <div><p className="text-sm font-medium text-text-primary">Regulatory Guidance</p><p className="text-xs text-text-secondary">Tailored compliance rules</p></div>
@@ -140,7 +159,7 @@ export default function StartupDashboard() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-text-secondary text-center py-4">No recent activity</p>
+              <p className="text-sm text-text-secondary text-center py-4">{isApiSession ? 'Open an application to view its server status history.' : 'No recent activity'}</p>
             )}
           </div>
 
@@ -155,7 +174,9 @@ export default function StartupDashboard() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-text-primary">{app.id}</p>
                       <p className="text-xs text-text-secondary">
-                        {app.status === 'Draft' ? 'Complete and submit your draft application' : 'Respond to clarification request'}
+                        {app.status === 'Draft'
+                          ? 'Complete and submit your draft application'
+                          : (isApiSession ? 'Clarification response is not connected yet' : 'Respond to clarification request')}
                       </p>
                     </div>
                     <StatusBadge status={app.status} size="sm" />

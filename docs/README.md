@@ -4,7 +4,7 @@ This directory contains the project requirements, design documents, current impl
 
 ## Current status
 
-The repository now has PostgreSQL/Prisma persistence foundations, core auth/startup/application APIs, and a tested resources API consumed by the public and startup resource pages. Most other React workflows remain mock-backed, and officer/query/notification/document/admin integrations are incomplete. The Electron app launches the same website in a native development window; it is not a packaged release. See [implementation-status.md](./implementation-status.md) for details and verification.
+The repository now has PostgreSQL/Prisma persistence foundations, core auth/startup/application APIs, and a tested resources API consumed by the public and startup resource pages. Live applicant profile display and application list/detail/draft/submission flows are connected; demo flows remain local. Officer/query/notification/document/admin integrations are incomplete. The Electron app launches the same website in a native development window; it is not a packaged release. See [implementation-status.md](./implementation-status.md) for details and verification.
 
 ## Project and team
 

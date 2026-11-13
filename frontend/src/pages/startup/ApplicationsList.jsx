@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, FileText, ArrowRight, Search, RotateCcw } from 'lucide-react';
+import { Plus, FileText, ArrowRight, Search, RefreshCw } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useApplications } from '../../context/ApplicationContext';
 import StatusBadge from '../../components/common/StatusBadge';
@@ -12,20 +12,19 @@ import { formatDate } from '../../utils/helpers';
 const statusOptions = ['All', 'Draft', 'Submitted', 'Under Review', 'Clarification Required', 'Approved', 'Rejected'];
 
 export default function ApplicationsList() {
-  const { startup } = useAuth();
-  const { applications, getApplicationsByStartup, resetToMockData } = useApplications();
+  const { startup, isApiSession } = useAuth();
+  const { applications, getApplicationsByStartup, applicationLoading, applicationError, refreshApplications } = useApplications();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
 
-  // If startup profile exists, match by startupId; otherwise show user's drafts/apps or fallback
   const myApps = useMemo(() => {
+    if (isApiSession) return applications || [];
     if (startup?.id) {
       const matched = getApplicationsByStartup(startup.id);
       if (matched.length > 0) return matched;
     }
-    // Fallback: show applications for demo startup stp_001 if no startup is bound
     return (applications || []).filter(a => a?.startupId === (startup?.id || 'stp_001'));
-  }, [startup, getApplicationsByStartup, applications]);
+  }, [isApiSession, startup, getApplicationsByStartup, applications]);
 
   const filtered = useMemo(() => {
     return myApps.filter(app => {
@@ -75,8 +74,17 @@ export default function ApplicationsList() {
           </select>
         </div>
 
+        {applicationError && isApiSession && (
+          <div className="card p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3" role="alert">
+            <p className="text-sm text-error">{applicationError}</p>
+            <button onClick={() => refreshApplications().catch(() => {})} className="btn-secondary inline-flex items-center gap-2 text-sm"><RefreshCw className="w-4 h-4" /> Retry</button>
+          </div>
+        )}
+
         {/* Applications */}
-        {filtered.length > 0 ? (
+        {applicationLoading && isApiSession ? (
+          <div role="status" className="card p-8 text-center text-sm text-text-secondary">Loading your applications…</div>
+        ) : filtered.length > 0 ? (
           <div className="grid md:grid-cols-2 gap-4">
             {filtered.map((app, i) => (
               <motion.div key={app?.id || i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>

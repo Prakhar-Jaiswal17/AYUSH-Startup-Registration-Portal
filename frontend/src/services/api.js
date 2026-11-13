@@ -1,6 +1,8 @@
 import axios from 'axios';
 
 const configuredBaseURL = import.meta.env.VITE_API_URL || 'http://localhost:3005/api';
+const TOKEN_KEY = 'ayush_setu_token';
+const AUTH_STORAGE_KEY = 'ayush_setu_auth';
 
 const api = axios.create({
   baseURL: configuredBaseURL.replace(/\/+$/, ''),
@@ -13,10 +15,12 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     const token = typeof localStorage !== 'undefined'
-      ? localStorage.getItem('ayush_setu_token')
+      ? localStorage.getItem(TOKEN_KEY)
       : null;
+    const path = (config.url || '').replace(/^\/+/, '');
+    const isPublicAuthRequest = path === 'auth/login' || path === 'auth/register';
 
-    if (token) {
+    if (token && !isPublicAuthRequest) {
       config.headers.Authorization = `Bearer ${token}`;
     }
 
@@ -39,9 +43,21 @@ export function getApiErrorMessage(error, fallback = 'Something went wrong. Plea
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 && typeof localStorage !== 'undefined') {
-      // Keep the local demo session intact while clearing an expired API token.
-      localStorage.removeItem('ayush_setu_token');
+    const requestAuthorization = error.config?.headers?.Authorization
+      || error.config?.headers?.authorization
+      || error.config?.headers?.get?.('Authorization');
+    if (error.response?.status === 401 && requestAuthorization && typeof localStorage !== 'undefined') {
+      localStorage.removeItem(TOKEN_KEY);
+      try {
+        const stored = JSON.parse(localStorage.getItem(AUTH_STORAGE_KEY) || 'null');
+        if (stored?.source === 'api') {
+          localStorage.removeItem(AUTH_STORAGE_KEY);
+          if (typeof window !== 'undefined') window.dispatchEvent(new Event('ayush:auth-expired'));
+        }
+      } catch {
+        localStorage.removeItem(AUTH_STORAGE_KEY);
+        if (typeof window !== 'undefined') window.dispatchEvent(new Event('ayush:auth-expired'));
+      }
     }
 
     error.apiMessage = getApiErrorMessage(error);
@@ -54,7 +70,9 @@ export default api;
 export const authAPI = {
   login: (credentials) => api.post('/auth/login', credentials),
   register: (userData) => api.post('/auth/register', userData),
-  logout: () => api.post('/auth/logout'),
+  logout: (token) => api.post('/auth/logout', null, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  }),
   getProfile: () => api.get('/auth/profile'),
 };
 
@@ -99,6 +117,8 @@ export const documentAPI = {
 };
 
 export const startupAPI = {
+  getMyProfile: () => api.get('/startups/me'),
+  updateMyProfile: (data) => api.put('/startups/me', data),
   getProfile: (id) => api.get(`/startups/${id}`),
   updateProfile: (id, data) => api.put(`/startups/${id}`, data),
 };

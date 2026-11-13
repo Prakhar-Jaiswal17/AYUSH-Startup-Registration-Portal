@@ -15,7 +15,7 @@ flowchart LR
 
 ## Current implementation
 
-- **Website:** Public and startup pages for resources consume the backend resources API. Auth, application, document, query, officer, notification, and admin workflow screens mostly remain prototypes backed by mock data/browser storage.
+- **Website:** Public and startup pages for resources consume the backend resources API. Real login, registration, logout, and session restoration use the backend auth API; demo role sign-in remains local. Live startup accounts load their profile and application list/detail from the API and create, edit, and submit drafts through it. Demo applicant workflows remain local; documents, clarification responses, notifications, and officer/admin workflows are not fully connected.
 - **Electron:** Opens the same website in a native window and reuses its routes and behavior. It is a development launcher, not a packaged desktop release.
 - **API:** Express routes currently cover health, bcrypt/JWT auth, startup profile read/create/update, startup application draft/read/update/submit/status history, and static public resources.
 - **Persistence:** The auth/startup/application endpoints use the shared Prisma client and PostgreSQL. Resource content is currently static in the resources route rather than stored in the database.

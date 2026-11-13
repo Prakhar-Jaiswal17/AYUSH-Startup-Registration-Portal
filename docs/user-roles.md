@@ -1,6 +1,6 @@
 # User Roles, Permissions, and Use Case Analysis
 
-This document describes target roles and permissions. Backend authentication and authorization are implemented for the current auth, startup profile, and startup application routes; the React auth and workflow screens remain mock-backed, and officer/admin authorization workflows are not complete. See [implementation-status.md](./implementation-status.md).
+This document describes target roles and permissions. Backend authentication and authorization are implemented for the current auth, startup profile, and startup application routes. Real login, registration, logout, and session restoration are connected to `AuthContext`; live startup profile display and applicant application list/detail/draft/submission screens use those APIs. Demo-role sign-in and demo applicant state remain local. Document upload, clarification responses, officer review APIs, notifications, and related authorization workflows are not complete. See [implementation-status.md](./implementation-status.md).
 
 ## 1. Overview of Stakeholders
 

@@ -1,10 +1,10 @@
 # API Contract — AYUSH Startup Registration Portal
 
-> **Document version:** 1.3 (draft — Resources section verified)
+> **Document version:** 1.4 (draft — auth and health-response clarifications proposed)
 > **Phase:** Phase 2 — Chunk 4 (proposed API contract and team ownership)
 > **Status:** Proposed alignment with the existing PostgreSQL schema; Prakhar and Arnav review API fields together; Sarth has verified and aligned the resources contract and connected the public and startup resource pages. This draft does not change the SQL or Prisma schema.
 
-This document is intended to be the source of truth for HTTP API communication between the React frontend and Express backend. Version 1.3 is a proposal; the affected collaborators must review it before its field changes replace the previously agreed contract. See [team-roles.md](./team-roles.md) for the full division of project work.
+This document is intended to be the source of truth for HTTP API communication between the React frontend and Express backend. Version 1.4 is a proposal; the affected collaborators must review it before its field changes replace the previously agreed contract. See [team-roles.md](./team-roles.md) for the full division of project work.
 
 ---
 
@@ -40,7 +40,7 @@ This document is intended to be the source of truth for HTTP API communication b
 | Local development | `http://localhost:3005/api` |
 | Frontend env variable | `VITE_API_URL=http://localhost:3005/api` |
 
-> **Current frontend status (12 November 2026):** `frontend/src/services/api.js` uses `VITE_API_URL` with the `http://localhost:3005/api` fallback, and `frontend/.env.example` contains the same value. No local `.env` file is required or committed.
+> **Current frontend status (14 November 2026):** `frontend/src/services/api.js` uses `VITE_API_URL` with the `http://localhost:3005/api` fallback, and `frontend/.env.example` contains the same value. No local `.env` file is required or committed.
 
 Backend env variables required in `backend/.env`:
 
@@ -61,14 +61,14 @@ FRONTEND_ORIGIN=http://localhost:5173
 **Method:** JWT Bearer Token
 
 - After login, the backend returns a `token` string.
-- The API client reads it from `localStorage` under `ayush_setu_token` and attaches it to requests. The current `AuthContext` remains mock-backed and does not yet store a backend token.
+- `AuthContext` stores the returned token in `localStorage` under `ayush_setu_token`; the API client attaches it to protected requests. Real login, registration, logout, and session restoration use the auth API. Demo role sign-in remains local.
 - Every protected request must include the header:
 
 ```
 Authorization: Bearer <token>
 ```
 
-- The backend middleware (`middleware/auth.js`, owned by Prakhar) verifies the token and attaches `req.user` to the request object.
+- The backend middleware (`middleware/auth.js`, owned by Prakhar) verifies the token and attaches `req.user` to the request object. The JWT claim and API response use the uppercase role values from Section 3; the middleware converts that role to lowercase for `req.user.role`, matching the database role value and backend role guards.
 
 ### `req.user` shape (set by auth middleware)
 
@@ -76,7 +76,7 @@ Authorization: Bearer <token>
 {
   "id": "uuid",
   "email": "user@example.com",
-  "role": "STARTUP",
+  "role": "startup",
   "name": "Full Name"
 }
 ```
@@ -89,7 +89,7 @@ The HTTP API may use the stable uppercase values below. Before querying or writi
 
 ### Role Enum
 
-Used in API responses and `req.user.role`. Store the lowercase representation in `users.role` and `audit_logs.actor_role`.
+Used in API responses and JWT claims. The auth middleware normalizes the value to lowercase for internal `req.user.role`; store the lowercase representation in `users.role` and `audit_logs.actor_role`.
 The database additionally permits `system` as an audit actor role; it is internal-only and is not a login/user role.
 
 | API value | PostgreSQL value | Description |
@@ -129,7 +129,7 @@ Clarification query `status` is `PENDING` or `RESOLVED` in the API and `Pending`
 
 ## 4. Response Shape
 
-Every response from the API — success or error — uses one of these two shapes. No exceptions.
+Business API responses use one of these two shapes. The current health check, `GET /api/health`, is an explicit exception and returns `{ "status": "OK" }`; confirm with the route owner whether to retain that shape or change the route to the common envelope.
 
 ### Success
 
@@ -1129,11 +1129,11 @@ export const STATUS_COLORS = {
 
 ### Frontend implementation status
 
-- The API client wrappers are prepared against the endpoint shapes in this document. The public and startup resources pages consume `resourceAPI`; the main auth, profile, application, and notification contexts remain mock-backed.
+- The API client wrappers follow the endpoint shapes in this document. The public and startup resources pages consume `resourceAPI`; `AuthContext` consumes auth and startup profile endpoints; `ApplicationContext` and applicant profile/list/detail/draft/submission screens consume the startup/application endpoints for live startup accounts. Demo applicant flows remain local, and `NotificationContext` remains mock-backed.
 - The client-side `generateAppId()` helper was removed. The local demo uses an internal `mock-…` record ID and leaves `trackingNumber` empty; only the backend may generate the database application ID in the required formatted string.
 - Native `alert()` feedback was removed from `NewApplication.jsx` and replaced with inline feedback. Other prototype pages may still contain placeholder alerts.
-- Auth, startup profile, and core application endpoints are implemented, but `AuthContext`, `ApplicationContext`, and `NotificationContext` remain mock-backed until their screens are connected to those routes. Officer/query/notification/document/admin/category backend routes are still incomplete.
-- The seven-step form keeps its complete data in the local demo record. Map its category selection to the database category `code`; application-specific regulatory and business answers belong in JSONB `regulatoryDetails` and `businessDetailsSnapshot`. Founder records belong to the startup profile and cannot hold application-specific founder snapshots in this schema.
+- Auth, startup profile, and core application endpoints are implemented. Real auth and startup profile loading are connected to `AuthContext`; `ApplicationContext` fetches live application lists and supports create/update/submit. The seven-step form maps AYUSH labels to seeded category codes and stores regulatory/business answers in the documented JSON fields. Demo mode remains local. Officer/query/notification/document/admin backend routes and UI integrations are still incomplete.
+- Application detail reads server status history, founders, and document metadata. The live applicant flow does not upload documents or respond to clarification queries because those APIs are not yet connected. Founder records belong to the startup profile and cannot hold application-specific founder snapshots in this schema.
 - See [implementation-status.md](./implementation-status.md) for backend readiness and SQL/Prisma alignment gaps.
 
 ### Database compatibility rule
@@ -1152,5 +1152,5 @@ If a collaborator identifies a required schema change after this contract is agr
 
 ---
 
-*Draft reconciliation prepared 13 November 2026. The existing SQL and Prisma schema remain unchanged. Review the proposed API field changes with the affected collaborators before treating version 1.3 as agreed.*
+*Draft reconciliation prepared 14 November 2026. The existing SQL and Prisma schema remain unchanged. Review the proposed API field changes and auth/health clarifications with the affected collaborators before treating version 1.4 as agreed.*
 

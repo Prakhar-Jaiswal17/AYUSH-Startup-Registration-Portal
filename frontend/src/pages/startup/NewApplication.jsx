@@ -1,12 +1,14 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, ChevronRight, ChevronLeft, Save, Send, Plus, X, Upload, CheckCircle, Pencil, FileText } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useApplications } from '../../context/ApplicationContext';
 import { useNotifications } from '../../context/NotificationContext';
-import { ayushDomains, indianStates, incorporationTypes, businessActivities, businessStages, documentCategories } from '../../data/mockData';
+import { ayushDomains, indianStates, incorporationTypes, businessActivities, businessStages } from '../../data/mockData';
 import { DOCUMENT_FORMAT_LABEL, DOCUMENT_MAX_SIZE_MB } from '../../utils/documentUpload';
+import { applicationAPI, getApiErrorMessage } from '../../services/api';
+import { applicationFormToPayload, applicationToForm, startupToApplicationForm } from '../../utils/applicationMappers';
 import Modal from '../../components/common/Modal';
 import PageTransition from '../../layouts/PageTransition';
 
@@ -28,8 +30,10 @@ const initialFormData = {
 
 export default function NewApplication() {
   const navigate = useNavigate();
-  const { user, startup } = useAuth();
-  const { createApplication } = useApplications();
+  const [searchParams] = useSearchParams();
+  const editDraftId = searchParams.get('draft');
+  const { user, startup, isApiSession, startupLoading, startupError, refreshStartupProfile } = useAuth();
+  const { createApplication, updateApplication, submitApplication } = useApplications();
   const { addNotification } = useNotifications();
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState(initialFormData);
@@ -38,15 +42,67 @@ export default function NewApplication() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [createdApplicationId, setCreatedApplicationId] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [draftLoading, setDraftLoading] = useState(Boolean(isApiSession && editDraftId));
   const [saveFeedback, setSaveFeedback] = useState('');
   const [submissionError, setSubmissionError] = useState('');
+  const [applicationId, setApplicationId] = useState('');
+  const initializedKey = useRef('');
+  const draftStorageKey = isApiSession ? `${DRAFT_KEY}:${user?.id || 'account'}` : DRAFT_KEY;
 
   useEffect(() => {
-    try {
-      const draft = localStorage.getItem(DRAFT_KEY);
-      if (draft) setFormData(JSON.parse(draft));
-    } catch {}
-  }, []);
+    if (isApiSession && startupLoading) return undefined;
+    const loadKey = `${isApiSession ? 'api' : 'demo'}:${user?.id || 'guest'}:${editDraftId || 'new'}`;
+    if (initializedKey.current === loadKey) return undefined;
+    initializedKey.current = loadKey;
+    let active = true;
+
+    const restoreDraft = async () => {
+      setDraftLoading(isApiSession && Boolean(editDraftId));
+      setSubmissionError('');
+      try {
+        if (isApiSession && editDraftId) {
+          const response = await applicationAPI.getById(editDraftId);
+          const application = response?.data?.data;
+          if (!application) throw new Error('Application details were not returned by the server.');
+          if (active) {
+            const restoredForm = applicationToForm(application, startup);
+            setFormData({ ...initialFormData, ...restoredForm });
+            setApplicationId(application.id);
+            localStorage.setItem(draftStorageKey, JSON.stringify({ formData: restoredForm, applicationId: application.id }));
+          }
+          return;
+        }
+
+        const stored = localStorage.getItem(draftStorageKey);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          const savedForm = parsed?.formData ? parsed.formData : parsed;
+          if (active) {
+            setFormData({ ...initialFormData, ...savedForm });
+            setApplicationId(parsed?.formData ? parsed.applicationId || '' : '');
+          }
+        } else if (isApiSession && startup) {
+          if (active) {
+            setFormData({ ...initialFormData, ...startupToApplicationForm(startup) });
+            setApplicationId('');
+          }
+        } else if (active) {
+          setFormData(initialFormData);
+          setApplicationId('');
+        }
+      } catch (error) {
+        if (active) setSubmissionError(error?.apiMessage || getApiErrorMessage(error, 'Unable to load this application draft.'));
+      } finally {
+        if (active) setDraftLoading(false);
+      }
+    };
+
+    restoreDraft();
+    return () => {
+      active = false;
+    };
+  }, [draftStorageKey, editDraftId, isApiSession, startup, startupLoading, user?.id]);
 
   const updateField = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -55,14 +111,53 @@ export default function NewApplication() {
     if (errors[field]) setErrors(prev => { const n = { ...prev }; delete n[field]; return n; });
   };
 
-  const saveDraft = () => {
+  const saveDraftLocally = () => {
+    localStorage.setItem(draftStorageKey, JSON.stringify({ formData, applicationId }));
+  };
+
+  const saveDraft = async () => {
+    if (savingDraft || submitting || startupLoading || draftLoading || startupError) return;
+    setSavingDraft(true);
+    setSubmissionError('');
+    setSaveFeedback('');
+
     try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(formData));
-      setSubmissionError('');
-      setSaveFeedback('Draft saved in this browser.');
-    } catch {
-      setSaveFeedback('');
-      setSubmissionError('Unable to save this draft in browser storage. Please try again.');
+      if (!isApiSession) {
+        saveDraftLocally();
+        setSaveFeedback('Draft saved in this browser.');
+        return;
+      }
+
+      const missing = [];
+      if (!formData.legalName.trim()) missing.push('legal name');
+      if (!formData.brandName.trim()) missing.push('brand name');
+      if (!formData.state) missing.push('state');
+      if (!formData.ayushDomain) missing.push('AYUSH domain');
+      if (!startup?.id && !formData.founderName.trim()) missing.push('a primary founder');
+      if (missing.length) {
+        saveDraftLocally();
+        setSaveFeedback(`Saved in this browser. Add ${missing.join(', ')} to save this draft to your account.`);
+        return;
+      }
+
+      const payload = applicationFormToPayload(formData, {
+        hasStartupProfile: Boolean(startup?.id),
+        requireFounder: !startup?.id,
+      });
+      const saved = applicationId
+        ? await updateApplication(applicationId, payload)
+        : await createApplication(payload);
+      const savedId = saved?.id || saved?.trackingNumber;
+      if (!savedId) throw new Error('The server did not return an application ID.');
+
+      setApplicationId(savedId);
+      localStorage.setItem(draftStorageKey, JSON.stringify({ formData, applicationId: savedId }));
+      await refreshStartupProfile().catch(() => null);
+      setSaveFeedback(`Draft ${savedId} saved to your account.`);
+    } catch (error) {
+      setSubmissionError(error?.apiMessage || getApiErrorMessage(error, 'Unable to save this draft. Please try again.'));
+    } finally {
+      setSavingDraft(false);
     }
   };
 
@@ -77,11 +172,14 @@ export default function NewApplication() {
       if (!formData.officialEmail.trim()) e.officialEmail = 'Required';
       else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.officialEmail)) e.officialEmail = 'Invalid email';
     } else if (step === 1) {
-      if (!formData.founderName.trim()) e.founderName = 'Required';
-      if (!formData.founderDesignation.trim()) e.founderDesignation = 'Required';
-      if (!formData.founderEmail.trim()) e.founderEmail = 'Required';
-      if (!formData.founderPhone.trim()) e.founderPhone = 'Required';
-      if (!formData.founderQualification.trim()) e.founderQualification = 'Required';
+      if (!startup?.founders?.length && !startup?.founder) {
+        if (!formData.founderName.trim()) e.founderName = 'Required';
+        if (!formData.founderDesignation.trim()) e.founderDesignation = 'Required';
+        if (!formData.founderEmail.trim()) e.founderEmail = 'Required';
+        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.founderEmail)) e.founderEmail = 'Invalid email';
+        if (!formData.founderPhone.trim()) e.founderPhone = 'Required';
+        if (!formData.founderQualification.trim()) e.founderQualification = 'Required';
+      }
     } else if (step === 2) {
       if (!formData.ayushDomain) e.ayushDomain = 'Select a domain';
       if (formData.selectedActivities.length === 0) e.selectedActivities = 'Select at least one activity';
@@ -91,6 +189,7 @@ export default function NewApplication() {
       if (!formData.products.trim()) e.products = 'Required';
       if (!formData.businessStage) e.businessStage = 'Required';
       if (!formData.targetMarket.trim()) e.targetMarket = 'Required';
+      if (!formData.state) e.state = 'Required';
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -107,40 +206,59 @@ export default function NewApplication() {
   const goToStep = (step) => { setDirection(step > currentStep ? 1 : -1); setCurrentStep(step); };
 
   const handleSubmit = async () => {
-    if (!formData.declaration || submitting) return;
+    if (!formData.declaration || submitting || startupLoading || draftLoading || startupError) return;
     setSubmitting(true);
     setSubmissionError('');
     setSaveFeedback('');
 
     try {
-      // Keep the local demo flow available until the application API is implemented.
-      await new Promise(resolve => setTimeout(resolve, 500));
-      const application = createApplication({
-        startupId: startup?.id || `stp_${Date.now()}`,
-        startupName: formData.legalName,
-        brandName: formData.brandName,
-        ayushDomain: formData.ayushDomain,
-        state: formData.state,
-        status: 'Submitted',
-        formData: { ...formData },
-      });
+      let submittedId;
+      if (isApiSession) {
+        const payload = applicationFormToPayload(formData, {
+          hasStartupProfile: Boolean(startup?.id),
+          requireFounder: true,
+        });
+        const draft = applicationId
+          ? await updateApplication(applicationId, payload)
+          : await createApplication(payload);
+        const draftId = draft?.id || draft?.trackingNumber;
+        if (!draftId) throw new Error('The server did not return an application ID.');
 
-      addNotification({
-        type: 'status_update',
-        title: 'Application Submitted',
-        message: 'Your application was submitted in the local demo. A tracking number will be assigned by the server when live submission is available.',
-        applicationId: application.id,
-      });
+        setApplicationId(draftId);
+        localStorage.setItem(draftStorageKey, JSON.stringify({ formData, applicationId: draftId }));
+        await refreshStartupProfile().catch(() => null);
+        const submitted = await submitApplication(draftId);
+        submittedId = submitted?.id || submitted?.trackingNumber || draftId;
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const application = await createApplication({
+          startupId: startup?.id || `stp_${Date.now()}`,
+          startupName: formData.legalName,
+          brandName: formData.brandName,
+          ayushDomain: formData.ayushDomain,
+          state: formData.state,
+          status: 'Submitted',
+          formData: { ...formData },
+        });
+
+        addNotification({
+          type: 'status_update',
+          title: 'Application Submitted',
+          message: 'Your application was submitted in the local demo. A tracking number will be assigned by the server when live submission is available.',
+          applicationId: application.id,
+        });
+        submittedId = application.id;
+      }
 
       try {
-        localStorage.removeItem(DRAFT_KEY);
+        localStorage.removeItem(draftStorageKey);
       } catch {
-        // The application record is already saved in the mock context.
+        // The application is already saved by the selected flow.
       }
-      setCreatedApplicationId(application.id);
+      setCreatedApplicationId(submittedId);
       setShowSuccess(true);
     } catch (error) {
-      setSubmissionError(error?.message || 'Unable to submit the application. Please try again.');
+      setSubmissionError(error?.apiMessage || getApiErrorMessage(error, 'Unable to submit the application. Please try again.'));
     } finally {
       setSubmitting(false);
     }
@@ -191,6 +309,16 @@ export default function NewApplication() {
 
   const FieldError = ({ name }) => errors[name] ? <p className="text-xs text-error mt-1">{errors[name]}</p> : null;
 
+  if (isApiSession && (startupLoading || draftLoading)) {
+    return (
+      <PageTransition>
+        <div role="status" className="card p-10 text-center text-sm text-text-secondary">
+          {draftLoading ? 'Loading your saved application…' : 'Loading your startup profile…'}
+        </div>
+      </PageTransition>
+    );
+  }
+
   return (
     <PageTransition>
       <div className="max-w-4xl mx-auto space-y-6">
@@ -198,6 +326,13 @@ export default function NewApplication() {
           <h1 className="text-2xl font-bold text-text-primary">New Application</h1>
           <p className="text-text-secondary text-sm mt-1">Complete the registration wizard to submit your application.</p>
         </div>
+
+        {startupError && isApiSession && (
+          <div className="rounded-lg border border-error/20 bg-error/5 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3" role="alert">
+            <p className="text-sm text-error">{startupError} Reload your profile before editing or submitting this application.</p>
+            <button onClick={() => refreshStartupProfile().catch(() => {})} className="btn-secondary text-sm">Retry profile load</button>
+          </div>
+        )}
 
         {saveFeedback && (
           <p role="status" className="rounded-lg border border-success/20 bg-success/5 px-4 py-3 text-sm text-success">
@@ -349,7 +484,7 @@ export default function NewApplication() {
                     <div><label className="label">Business Stage <span className="text-error">*</span></label><select value={formData.businessStage} onChange={e => updateField('businessStage', e.target.value)} className="input-field"><option value="">Select...</option>{businessStages.map(s => <option key={s} value={s}>{s}</option>)}</select><FieldError name="businessStage" /></div>
                     <div><label className="label">Target Market <span className="text-error">*</span></label><input type="text" value={formData.targetMarket} onChange={e => updateField('targetMarket', e.target.value)} className="input-field" placeholder="e.g., Pan-India, Export" /><FieldError name="targetMarket" /></div>
                     <div><label className="label">Operational Status</label><select value={formData.operationalStatus} onChange={e => updateField('operationalStatus', e.target.value)} className="input-field"><option value="">Select...</option><option>Pre-launch</option><option>Active</option><option>Scaling</option><option>Pivoting</option></select></div>
-                    <div><label className="label">State</label><select value={formData.state} onChange={e => updateField('state', e.target.value)} className="input-field"><option value="">Select state...</option>{indianStates.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
+                    <div><label className="label">State <span className="text-error">*</span></label><select value={formData.state} onChange={e => updateField('state', e.target.value)} className="input-field"><option value="">Select state...</option>{indianStates.map(s => <option key={s} value={s}>{s}</option>)}</select><FieldError name="state" /></div>
                     <div><label className="label">City</label><input type="text" value={formData.city} onChange={e => updateField('city', e.target.value)} className="input-field" placeholder="City name" /></div>
                   </div>
                 </div>
@@ -391,7 +526,7 @@ export default function NewApplication() {
               {currentStep === 5 && (
                 <div className="space-y-4">
                   <h2 className="text-lg font-semibold text-text-primary mb-2">Document Uploads</h2>
-                  <p className="text-sm text-text-secondary mb-4">Upload the required documents. You can also upload them later from the Document Centre.</p>
+                  <p className="text-sm text-text-secondary mb-4">{isApiSession ? 'Document upload is not connected yet. You can save and submit the application details; files will not be attached.' : 'Upload the required documents. You can also upload them later from the Document Centre.'}</p>
                   <div className="space-y-3">
                     {requiredDocs.map(docType => {
                       const uploaded = formData.uploadedFiles.find(f => f.docType === docType);
@@ -401,10 +536,12 @@ export default function NewApplication() {
                             <FileText className={`w-5 h-5 ${uploaded ? 'text-success' : 'text-text-secondary/40'}`} />
                             <div>
                               <p className="text-sm font-medium text-text-primary">{docType}</p>
-                              {uploaded && <p className="text-xs text-text-secondary">{uploaded.fileName} &middot; {uploaded.fileSize}</p>}
+                              {!isApiSession && uploaded && <p className="text-xs text-text-secondary">{uploaded.fileName} &middot; {uploaded.fileSize}</p>}
                             </div>
                           </div>
-                          {uploaded ? (
+                          {isApiSession ? (
+                            <span className="text-xs text-text-secondary">Not connected</span>
+                          ) : uploaded ? (
                             <button onClick={() => removeFile(docType)} className="text-xs text-error hover:underline">Remove</button>
                           ) : (
                             <button onClick={() => addFile(docType)} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1"><Upload className="w-3 h-3" /> Upload</button>
@@ -413,7 +550,7 @@ export default function NewApplication() {
                       );
                     })}
                   </div>
-                  <p className="text-xs text-text-secondary">Supported formats: {DOCUMENT_FORMAT_LABEL}. Max file size: {DOCUMENT_MAX_SIZE_MB} MB per document.</p>
+                  {!isApiSession && <p className="text-xs text-text-secondary">Supported formats: {DOCUMENT_FORMAT_LABEL}. Max file size: {DOCUMENT_MAX_SIZE_MB} MB per document.</p>}
                 </div>
               )}
 
@@ -428,7 +565,7 @@ export default function NewApplication() {
                     { title: 'AYUSH Classification', step: 2, items: [['Domain', formData.ayushDomain], ['Activities', formData.selectedActivities.join(', ') || '—']] },
                     { title: 'Business Details', step: 3, items: [['Stage', formData.businessStage], ['Target Market', formData.targetMarket], ['Status', formData.operationalStatus || '—'], ['Location', [formData.city, formData.state].filter(Boolean).join(', ') || '—']] },
                     { title: 'Regulatory', step: 4, items: [['Existing Licences', formData.hasExistingLicences === 'yes' ? `Yes — ${formData.licenceDetails}` : 'No'], ['DPIIT Recognized', formData.isDPIITRecognized === 'yes' ? `Yes — ${formData.dpiitNumber}` : 'No']] },
-                    { title: 'Documents', step: 5, items: formData.uploadedFiles.length > 0 ? formData.uploadedFiles.map(f => [f.docType, f.fileName]) : [['Status', 'No documents uploaded yet']] },
+                    { title: 'Documents', step: 5, items: isApiSession ? [['Status', 'Upload is not connected; no files will be attached']] : formData.uploadedFiles.length > 0 ? formData.uploadedFiles.map(f => [f.docType, f.fileName]) : [['Status', 'No documents uploaded yet']] },
                   ].map((section) => (
                     <div key={section.title} className="border border-border-light rounded-lg p-4">
                       <div className="flex items-center justify-between mb-3">
@@ -456,12 +593,12 @@ export default function NewApplication() {
 
         {/* Navigation Buttons */}
         <div className="flex items-center justify-between card p-4">
-          <button onClick={goPrev} disabled={currentStep === 0} className="btn-ghost inline-flex items-center gap-2 text-sm disabled:opacity-30"><ChevronLeft className="w-4 h-4" /> Previous</button>
-          <button onClick={saveDraft} className="btn-secondary text-sm inline-flex items-center gap-2"><Save className="w-4 h-4" /> Save Draft</button>
+          <button onClick={goPrev} disabled={currentStep === 0 || draftLoading} className="btn-ghost inline-flex items-center gap-2 text-sm disabled:opacity-30"><ChevronLeft className="w-4 h-4" /> Previous</button>
+          <button onClick={saveDraft} disabled={savingDraft || submitting || startupLoading || draftLoading || Boolean(startupError)} className="btn-secondary text-sm inline-flex items-center gap-2 disabled:opacity-50"><Save className="w-4 h-4" /> {savingDraft ? 'Saving…' : 'Save Draft'}</button>
           {currentStep < STEPS.length - 1 ? (
-            <button onClick={goNext} className="btn-primary inline-flex items-center gap-2 text-sm">Next <ChevronRight className="w-4 h-4" /></button>
+            <button onClick={goNext} disabled={draftLoading} className="btn-primary inline-flex items-center gap-2 text-sm disabled:opacity-50">Next <ChevronRight className="w-4 h-4" /></button>
           ) : (
-            <button onClick={handleSubmit} disabled={!formData.declaration || submitting} className="btn-primary inline-flex items-center gap-2 text-sm">{submitting ? 'Submitting...' : <><Send className="w-4 h-4" /> Submit Application</>}</button>
+            <button onClick={handleSubmit} disabled={!formData.declaration || submitting || savingDraft || startupLoading || draftLoading || Boolean(startupError)} className="btn-primary inline-flex items-center gap-2 text-sm disabled:opacity-50">{submitting ? 'Submitting...' : <><Send className="w-4 h-4" /> Submit Application</>}</button>
           )}
         </div>
 
@@ -472,8 +609,17 @@ export default function NewApplication() {
               <CheckCircle className="w-16 h-16 text-success mx-auto mb-4" />
             </motion.div>
             <h2 className="text-xl font-bold text-text-primary mb-2">Application Submitted</h2>
-            <p className="text-sm text-text-secondary mb-4">Your application was submitted in the local demo. No tracking number has been issued.</p>
-            <p className="text-xs text-text-secondary mb-6">The server will provide a tracking number when live application submission is connected.</p>
+            {isApiSession ? (
+              <>
+                <p className="text-sm text-text-secondary mb-2">Your application was submitted successfully.</p>
+                <p className="text-sm font-semibold text-primary mb-6">Tracking number: {createdApplicationId}</p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-text-secondary mb-4">Your application was submitted in the local demo. No tracking number has been issued.</p>
+                <p className="text-xs text-text-secondary mb-6">The server will provide a tracking number when live application submission is connected.</p>
+              </>
+            )}
             <div className="flex gap-3 justify-center">
               <button onClick={() => navigate('/dashboard')} className="btn-primary text-sm">Go to Dashboard</button>
               <button onClick={() => navigate(`/dashboard/applications/${createdApplicationId}`)} className="btn-secondary text-sm">View Application</button>

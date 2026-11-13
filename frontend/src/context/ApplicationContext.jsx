@@ -1,102 +1,159 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { mockApplications, mockDocuments } from '../data/mockData';
 import { useAuth } from './AuthContext';
+import { applicationAPI, getApiErrorMessage } from '../services/api';
+import { getStatusLabel } from '../utils/statusHelpers';
 
 const ApplicationContext = createContext(null);
-//************ */
 const APPS_STORAGE_KEY = 'ayush_setu_applications';
 const DOCS_STORAGE_KEY = 'ayush_setu_documents';
-//************ */
 
-const getInitialApplications = () => {
+function getInitialData(storageKey, fallback) {
   try {
-    const stored = localStorage.getItem(APPS_STORAGE_KEY);
+    const stored = localStorage.getItem(storageKey);
     if (stored) {
       const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
-      }
+      if (Array.isArray(parsed)) return parsed;
     }
-  } catch (e) {
-    console.warn('Failed to parse stored applications, resetting to mock data', e);
+  } catch (error) {
+    console.warn(`Failed to parse ${storageKey}; restoring demo data.`, error);
   }
   try {
-    localStorage.setItem(APPS_STORAGE_KEY, JSON.stringify(mockApplications));
+    localStorage.setItem(storageKey, JSON.stringify(fallback));
   } catch {}
-  return mockApplications;
-};
+  return fallback;
+}
 
-const getInitialDocuments = () => {
-  try {
-    const stored = localStorage.getItem(DOCS_STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
-      }
-    }
-  } catch (e) {
-    console.warn('Failed to parse stored documents, resetting to mock data', e);
+function responseData(response) {
+  const body = response?.data;
+  if (!body?.success || body.data === undefined || body.data === null) {
+    throw new Error(body?.error || 'The application service returned an unexpected response.');
   }
-  try {
-    localStorage.setItem(DOCS_STORAGE_KEY, JSON.stringify(mockDocuments));
-  } catch {}
-  return mockDocuments;
-};
+  return body.data;
+}
+
+function mapApplicationSummary(application, startupId) {
+  return {
+    ...application,
+    startupId: startupId || null,
+    startupName: application.legalName || application.startupName || '',
+    brandName: application.brandName || application.legalName || '',
+    ayushDomain: application.categoryName || application.categoryCode || application.ayushDomain || '',
+    status: getStatusLabel(application.status),
+    timeline: application.statusHistory || application.timeline || [],
+    documents: application.documents || [],
+  };
+}
 
 export function ApplicationProvider({ children }) {
-  const { user } = useAuth();
-  const [applications, setApplications] = useState(getInitialApplications);
-  const [documents, setDocuments] = useState(getInitialDocuments);
+  const { user, loading: authLoading, isApiSession, startup } = useAuth();
+  const [applications, setApplications] = useState([]);
+  const [documents, setDocuments] = useState([]);
+  const [applicationLoading, setApplicationLoading] = useState(true);
+  const [applicationError, setApplicationError] = useState('');
+  const isLiveStartup = isApiSession && user?.role === 'startup';
 
-  // Sync to localStorage whenever state changes
-  const saveApplications = useCallback((apps) => {
-    setApplications(apps);
+  const saveMockApplications = useCallback((nextApplications) => {
+    setApplications(nextApplications);
     try {
-      localStorage.setItem(APPS_STORAGE_KEY, JSON.stringify(apps));
-    } catch (e) {
-      console.error('Error saving applications to localStorage', e);
+      localStorage.setItem(APPS_STORAGE_KEY, JSON.stringify(nextApplications));
+    } catch (error) {
+      console.error('Error saving applications to localStorage', error);
     }
   }, []);
 
-  const saveDocuments = useCallback((docs) => {
-    setDocuments(docs);
+  const saveMockDocuments = useCallback((nextDocuments) => {
+    setDocuments(nextDocuments);
     try {
-      localStorage.setItem(DOCS_STORAGE_KEY, JSON.stringify(docs));
-    } catch (e) {
-      console.error('Error saving documents to localStorage', e);
+      localStorage.setItem(DOCS_STORAGE_KEY, JSON.stringify(nextDocuments));
+    } catch (error) {
+      console.error('Error saving documents to localStorage', error);
     }
   }, []);
+
+  const refreshApplications = useCallback(async () => {
+    if (!isLiveStartup) return [];
+
+    setApplicationLoading(true);
+    setApplicationError('');
+    try {
+      const firstPage = responseData(await applicationAPI.getAll({ page: 1, limit: 50 }));
+      const allItems = [...(firstPage.items || [])];
+      const totalPages = Math.max(1, firstPage.pagination?.totalPages || 1);
+
+      for (let page = 2; page <= totalPages; page += 1) {
+        const nextPage = responseData(await applicationAPI.getAll({ page, limit: 50 }));
+        allItems.push(...(nextPage.items || []));
+      }
+
+      const mapped = allItems.map((application) => mapApplicationSummary(application, startup?.id));
+      setApplications(mapped);
+      return mapped;
+    } catch (error) {
+      const message = error?.apiMessage || getApiErrorMessage(error, 'Unable to load your applications.');
+      setApplicationError(message);
+      throw new Error(message);
+    } finally {
+      setApplicationLoading(false);
+    }
+  }, [isLiveStartup, startup?.id]);
+
+  useEffect(() => {
+    if (authLoading) return;
+
+    if (isLiveStartup) {
+      setApplications([]);
+      setDocuments([]);
+      refreshApplications().catch(() => {});
+      return;
+    }
+
+    setApplicationError('');
+    setApplicationLoading(false);
+    if (user && !isApiSession) {
+      setApplications(getInitialData(APPS_STORAGE_KEY, mockApplications));
+      setDocuments(getInitialData(DOCS_STORAGE_KEY, mockDocuments));
+    } else {
+      setApplications([]);
+      setDocuments([]);
+    }
+  }, [authLoading, isApiSession, isLiveStartup, refreshApplications, user]);
 
   const getApplicationsByStartup = useCallback((startupId) => {
     if (!startupId) return [];
-    return (applications || []).filter(app => app?.startupId === startupId);
+    return (applications || []).filter((application) => application?.startupId === startupId);
   }, [applications]);
 
-  const getApplicationsByOfficer = useCallback((officerId) => {
-    return (applications || []).filter(app => !app?.assignedOfficer || app?.assignedOfficer === officerId);
-  }, [applications]);
+  const getApplicationsByOfficer = useCallback((officerId) => (
+    (applications || []).filter((application) => !application?.assignedOfficer || application?.assignedOfficer === officerId)
+  ), [applications]);
 
-  const getApplicationById = useCallback((appId) => {
-    return (applications || []).find(app => app?.id === appId);
-  }, [applications]);
+  const getApplicationById = useCallback((applicationId) => (
+    (applications || []).find((application) => application?.id === applicationId)
+  ), [applications]);
 
-  const getDocumentsByApplication = useCallback((appId) => {
-    if (!appId) return [];
-    return (documents || []).filter(doc => doc?.applicationId === appId);
+  const getDocumentsByApplication = useCallback((applicationId) => {
+    if (!applicationId) return [];
+    return (documents || []).filter((document) => document?.applicationId === applicationId);
   }, [documents]);
 
   const getDocumentsByStartup = useCallback((startupId) => {
     if (!startupId) return [];
-    return (documents || []).filter(doc => doc?.startupId === startupId);
+    return (documents || []).filter((document) => document?.startupId === startupId);
   }, [documents]);
 
-  const createApplication = useCallback((applicationData) => {
+  const createApplication = useCallback(async (applicationData) => {
+    if (isApiSession) {
+      if (!isLiveStartup) throw new Error('Only startup accounts can create applications.');
+      const created = responseData(await applicationAPI.create(applicationData));
+      await refreshApplications().catch(() => {});
+      return created;
+    }
+
     const localId = globalThis.crypto?.randomUUID?.()
       || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const newId = `mock-${localId}`;
-    const newApp = {
-      id: newId,
+    const newApplication = {
+      id: `mock-${localId}`,
       ...applicationData,
       trackingNumber: applicationData.trackingNumber || null,
       status: applicationData.status || 'Draft',
@@ -111,108 +168,136 @@ export function ApplicationProvider({ children }) {
       ],
       documents: [],
     };
-    const updated = [newApp, ...(applications || [])];
-    saveApplications(updated);
-    return newApp;
-  }, [applications, saveApplications]);
+    saveMockApplications([newApplication, ...(applications || [])]);
+    return newApplication;
+  }, [applications, isApiSession, isLiveStartup, refreshApplications, saveMockApplications]);
 
-  const submitApplication = useCallback((appId) => {
-    const updated = (applications || []).map(app => {
-      if (app?.id === appId) {
-        return {
-          ...app,
-          status: 'Submitted',
-          submittedAt: new Date().toISOString(),
-          lastUpdated: new Date().toISOString(),
-          timeline: [
-            ...(app.timeline || []),
-            { status: 'Submitted', date: new Date().toISOString(), remark: 'Application submitted successfully' },
-          ],
-        };
-      }
-      return app;
+  const updateApplication = useCallback(async (applicationId, applicationData) => {
+    if (isApiSession) {
+      if (!isLiveStartup) throw new Error('Only startup accounts can update applications.');
+      const updated = responseData(await applicationAPI.update(applicationId, applicationData));
+      await refreshApplications().catch(() => {});
+      return updated;
+    }
+
+    const updatedApplications = (applications || []).map((application) => (
+      application?.id === applicationId
+        ? { ...application, ...applicationData, lastUpdated: new Date().toISOString() }
+        : application
+    ));
+    saveMockApplications(updatedApplications);
+    return updatedApplications.find((application) => application?.id === applicationId) || null;
+  }, [applications, isApiSession, isLiveStartup, refreshApplications, saveMockApplications]);
+
+  const submitApplication = useCallback(async (applicationId) => {
+    if (isApiSession) {
+      if (!isLiveStartup) throw new Error('Only startup accounts can submit applications.');
+      const submitted = responseData(await applicationAPI.submit(applicationId));
+      await refreshApplications().catch(() => {});
+      return submitted;
+    }
+
+    const submittedAt = new Date().toISOString();
+    let result = null;
+    const updatedApplications = (applications || []).map((application) => {
+      if (application?.id !== applicationId) return application;
+      result = {
+        ...application,
+        status: 'Submitted',
+        submittedAt,
+        lastUpdated: submittedAt,
+        timeline: [
+          ...(application.timeline || []),
+          { status: 'Submitted', date: submittedAt, remark: 'Application submitted successfully' },
+        ],
+      };
+      return result;
     });
-    saveApplications(updated);
-  }, [applications, saveApplications]);
+    saveMockApplications(updatedApplications);
+    return result;
+  }, [applications, isApiSession, isLiveStartup, refreshApplications, saveMockApplications]);
 
-  const updateApplicationStatus = useCallback((appId, status, remark, officerName) => {
-    const updated = (applications || []).map(app => {
-      if (app?.id === appId) {
-        return {
-          ...app,
-          status,
-          lastUpdated: new Date().toISOString(),
-          assignedOfficer: app.assignedOfficer || user?.id,
-          timeline: [
-            ...(app.timeline || []),
-            {
-              status,
-              date: new Date().toISOString(),
-              remark: remark || `Application status changed to ${status}`,
-              officer: officerName || user?.name || 'Review Officer',
-            },
-          ],
-        };
-      }
-      return app;
+  const updateApplicationStatus = useCallback((applicationId, status, remark, officerName) => {
+    if (isApiSession) throw new Error('Application review APIs are not connected yet.');
+    const updatedApplications = (applications || []).map((application) => {
+      if (application?.id !== applicationId) return application;
+      const updatedAt = new Date().toISOString();
+      return {
+        ...application,
+        status,
+        lastUpdated: updatedAt,
+        assignedOfficer: application.assignedOfficer || user?.id,
+        timeline: [
+          ...(application.timeline || []),
+          {
+            status,
+            date: updatedAt,
+            remark: remark || `Application status changed to ${status}`,
+            officer: officerName || user?.name || 'Review Officer',
+          },
+        ],
+      };
     });
-    saveApplications(updated);
-  }, [applications, saveApplications, user]);
+    saveMockApplications(updatedApplications);
+  }, [applications, isApiSession, saveMockApplications, user]);
 
-  const addDocument = useCallback((doc) => {
-    const newDoc = {
+  const addDocument = useCallback((document) => {
+    if (isApiSession) throw new Error('Document upload is not connected to the backend yet.');
+    const newDocument = {
       id: `doc_${Date.now()}`,
       status: 'Uploaded',
       uploadedAt: new Date().toISOString(),
       verifiedAt: null,
       remark: null,
-      ...doc,
+      ...document,
     };
-    const updatedDocs = [newDoc, ...(documents || [])];
-    saveDocuments(updatedDocs);
+    saveMockDocuments([newDocument, ...(documents || [])]);
 
-    if (doc.applicationId) {
-      const updatedApps = (applications || []).map(app => {
-        if (app?.id === doc.applicationId) {
-          return { ...app, documents: [...(app.documents || []), newDoc.id] };
-        }
-        return app;
-      });
-      saveApplications(updatedApps);
+    if (document.applicationId) {
+      const updatedApplications = (applications || []).map((application) => (
+        application?.id === document.applicationId
+          ? { ...application, documents: [...(application.documents || []), newDocument.id] }
+          : application
+      ));
+      saveMockApplications(updatedApplications);
     }
+    return newDocument;
+  }, [applications, documents, isApiSession, saveMockApplications, saveMockDocuments]);
 
-    return newDoc;
-  }, [documents, applications, saveDocuments, saveApplications]);
-
-  const updateDocumentStatus = useCallback((docId, status, remark) => {
-    const updated = (documents || []).map(doc => {
-      if (doc?.id === docId) {
-        return {
-          ...doc,
+  const updateDocumentStatus = useCallback((documentId, status, remark) => {
+    if (isApiSession) throw new Error('Document verification is not connected to the backend yet.');
+    const updatedDocuments = (documents || []).map((document) => (
+      document?.id === documentId
+        ? {
+          ...document,
           status,
-          remark: remark || doc.remark,
-          verifiedAt: ['Verified', 'Rejected'].includes(status) ? new Date().toISOString() : doc.verifiedAt,
-        };
-      }
-      return doc;
-    });
-    saveDocuments(updated);
-  }, [documents, saveDocuments]);
+          remark: remark || document.remark,
+          verifiedAt: ['Verified', 'Rejected'].includes(status) ? new Date().toISOString() : document.verifiedAt,
+        }
+        : document
+    ));
+    saveMockDocuments(updatedDocuments);
+  }, [documents, isApiSession, saveMockDocuments]);
 
   const resetToMockData = useCallback(() => {
-    saveApplications(mockApplications);
-    saveDocuments(mockDocuments);
-  }, [saveApplications, saveDocuments]);
+    if (isApiSession) return;
+    saveMockApplications(mockApplications);
+    saveMockDocuments(mockDocuments);
+  }, [isApiSession, saveMockApplications, saveMockDocuments]);
 
   const value = {
     applications: applications || [],
     documents: documents || [],
+    applicationLoading,
+    applicationError,
+    refreshApplications,
     getApplicationsByStartup,
     getApplicationsByOfficer,
     getApplicationById,
     getDocumentsByApplication,
     getDocumentsByStartup,
     createApplication,
+    updateApplication,
     submitApplication,
     updateApplicationStatus,
     addDocument,
