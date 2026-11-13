@@ -47,7 +47,7 @@ API contract version 1.3 is a draft pending review by the route owners. The reso
 - Backend JavaScript syntax checks passed. A live PostgreSQL smoke flow passed registration, profile lookup, startup profile upsert, application create/list/detail/history, and submission; the temporary smoke account and its records were removed afterward.
 - `npm run build` passed with zero errors in `frontend/`.
 - The public static resources route and public/startup page integrations are runtime-verified via `backend/test-resources.js` (11/11 tests passing), verifying pagination envelope (`data.items`, `data.pagination`), category filtering, search, detail lookup, 404s, input validation, and verified destination URLs with zero placeholder `#` links.
-- Request validation rejects malformed JSON, non-object JSON bodies, malformed founder entries, and invalid nested application objects with structured client errors.
+- Request validation rejects malformed JSON, non-object JSON bodies, invalid nested application objects, malformed founder entries, invalid founder/profile email formats, invalid category-code types, and values exceeding the mapped database field limits with structured client errors.
 - The build completed with dependency and bundle-size warnings; the upload-copy changes added after that build have not been runtime-verified.
 - `npm run lint` could not start because ESLint 9 requires an `eslint.config.*` file, which is absent from the repository.
 - Browser check confirmed demo startup login, local draft feedback, mock document metadata, and navigation through the wizard to its review step. No backend submission was made.

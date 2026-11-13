@@ -1122,14 +1122,14 @@ export const STATUS_COLORS = {
 - No TypeScript. All backend files are `.js`.
 - Prisma 7 with `@prisma/adapter-pg`. Use `prisma7.config.js` for config.
 - Do not use `prisma.$connect()` manually — `@prisma/adapter-pg` handles pooling.
-- Use `express-validator` or Zod (team preference) for request validation.
+- Implemented routes use shared HTTP helpers and route-level validation (`backend/src/utils/http.js`). New route modules should return the same structured client-error shape; any additional validation library should be agreed by the route owners rather than assumed to be present in the backend.
 - Passwords: bcrypt with ≥ 10 rounds. Never return `passwordHash` in any response.
 - JWT: sign with `JWT_SECRET` from env, include `{ id, email, role }` in payload.
 - All DB timestamps: PostgreSQL `TIMESTAMPTZ`, Prisma `DateTime`.
 
 ### Frontend implementation status
 
-- The API client wrappers are prepared against the endpoint shapes in this document, but no screen or context currently calls them.
+- The API client wrappers are prepared against the endpoint shapes in this document. The public and startup resources pages consume `resourceAPI`; the main auth, profile, application, and notification contexts remain mock-backed.
 - The client-side `generateAppId()` helper was removed. The local demo uses an internal `mock-…` record ID and leaves `trackingNumber` empty; only the backend may generate the database application ID in the required formatted string.
 - Native `alert()` feedback was removed from `NewApplication.jsx` and replaced with inline feedback. Other prototype pages may still contain placeholder alerts.
 - Auth, startup profile, and core application endpoints are implemented, but `AuthContext`, `ApplicationContext`, and `NotificationContext` remain mock-backed until their screens are connected to those routes. Officer/query/notification/document/admin/category backend routes are still incomplete.
@@ -1152,5 +1152,5 @@ If a collaborator identifies a required schema change after this contract is agr
 
 ---
 
-*Draft reconciliation prepared 12 November 2026. The existing SQL and Prisma schema remain unchanged. Review the proposed API field changes with the affected collaborators before treating version 1.3 as agreed.*
+*Draft reconciliation prepared 13 November 2026. The existing SQL and Prisma schema remain unchanged. Review the proposed API field changes with the affected collaborators before treating version 1.3 as agreed.*
 
