@@ -390,6 +390,8 @@ Update startup profile.
 
 Convenience routes for the authenticated `STARTUP` user. `GET` returns that user's profile or `404` if it has not been created. `PUT` creates the profile on first use and updates it on later calls. Creating a profile requires `legalName`, `brandName`, `ayushDomain` (an active AYUSH category code), and `state`; optional `founders` replaces the startup's founder list in the same transaction. The `:id` routes remain available with the ownership rules above.
 
+Self-registration creates a user account only. It does not invent company details or create a placeholder startup profile; applicants create their profile through this route or provide the required startup details when creating their first application.
+
 ---
 
 ## 10. Application Routes — Startup-Facing
@@ -439,6 +441,8 @@ Create a new draft application.
 ```
 
 `categoryCode` maps to the AYUSH category key. `startupDetails` and `founders` are persisted on the linked startup profile; `regulatoryInfo` maps to `Application.regulatoryDetails`, and `businessInfo` maps to `Application.businessDetailsSnapshot`. Founder records are not application-owned and must not include `dinNumber` or `shareholding` unless a schema change is agreed.
+
+If the user has no startup profile yet, `startupDetails` must include `legalName`, `brandName`, and `state`, and `founders` must contain at least one founder. For an existing profile, supplied startup details and founders update that shared profile as part of draft creation; they are not an application-specific founder snapshot.
 
 **Success `201`:**
 ```json

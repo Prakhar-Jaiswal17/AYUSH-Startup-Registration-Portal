@@ -1,7 +1,7 @@
 const express = require('express')
 const { prisma } = require('../db/prisma')
 const { authenticate, allowRoles } = require('../middleware/auth')
-const { asyncHandler, httpError, requireFields } = require('../utils/http')
+const { asyncHandler, httpError, requireFields, requireObjectBody } = require('../utils/http')
 const { startupDto } = require('../utils/serializers')
 const { recordAudit } = require('../utils/audit')
 
@@ -53,6 +53,7 @@ function parseFounders(founders) {
     if (!Array.isArray(founders)) throw httpError(422, 'Validation failed', { founders: 'Must be an array.' })
     if (founders.length > 20) throw httpError(422, 'Validation failed', { founders: 'A maximum of 20 founders is allowed.' })
     return founders.map((founder, index) => {
+        if (!founder || typeof founder !== 'object' || Array.isArray(founder)) throw httpError(422, 'Validation failed', { [`founders.${index}`]: 'Must be an object.' })
         const fields = {}
         for (const key of ['name', 'designation', 'email', 'phone', 'qualification']) {
             if (typeof founder[key] !== 'string' || !founder[key].trim()) fields[`founders.${index}.${key}`] = 'This field is required.'
@@ -79,6 +80,7 @@ router.get('/me', authenticate, allowRoles('startup'), asyncHandler(async (req, 
 }))
 
 router.put('/me', authenticate, allowRoles('startup'), asyncHandler(async (req, res) => {
+    requireObjectBody(req.body)
     const founders = parseFounders(req.body.founders)
     const existing = await prisma.startup.findUnique({ where: { userId: req.user.id } })
     const data = parseStartupInput(req.body, existing, true)
@@ -106,6 +108,7 @@ router.get('/:id', authenticate, asyncHandler(async (req, res) => {
 }))
 
 router.put('/:id', authenticate, allowRoles('startup'), asyncHandler(async (req, res) => {
+    requireObjectBody(req.body)
     const existing = await prisma.startup.findUnique({ where: { id: req.params.id } })
     if (!existing) throw httpError(404, 'Startup profile not found.')
     if (existing.userId !== req.user.id) throw httpError(403, 'You may only update your own startup profile.')
