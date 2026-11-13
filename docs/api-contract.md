@@ -1,8 +1,8 @@
 # API Contract — AYUSH Startup Registration Portal
 
-> **Document version:** 1.3 (draft)
+> **Document version:** 1.3 (draft — Resources section verified)
 > **Phase:** Phase 2 — Chunk 4 (proposed API contract and team ownership)
-> **Status:** Proposed alignment with the existing PostgreSQL schema; Prakhar and Arnav review API fields together, and Sarth reviews the resources contract before connecting that page. This draft does not change the SQL or Prisma schema.
+> **Status:** Proposed alignment with the existing PostgreSQL schema; Prakhar and Arnav review API fields together; Sarth has verified and aligned the resources contract and connected the public and startup resource pages. This draft does not change the SQL or Prisma schema.
 
 This document is intended to be the source of truth for HTTP API communication between the React frontend and Express backend. Version 1.3 is a proposal; the affected collaborators must review it before its field changes replace the previously agreed contract. See [team-roles.md](./team-roles.md) for the full division of project work.
 
@@ -945,13 +945,17 @@ The current `User` schema has no account-active field. Do not implement this rou
 
 ## 16. Resource Routes
 
-Resources are publicly accessible guides and FAQs (read-only for non-admins). There is no `Resource` model/table in the existing SQL or Prisma schema. These endpoints must read static/configured content and must not attempt Prisma CRUD against a nonexistent table.
+Resources are publicly accessible guides, portals, and regulatory links (read-only for non-admins). There is no `Resource` model/table in the existing SQL or Prisma schema. These endpoints read curated static content and must not attempt Prisma CRUD against a nonexistent table.
 
 ### `GET /api/resources`
 
 **Auth:** None (public) or authenticated
 
-**Query params:** `category`, `search`, `page`, `limit`
+**Query params:**
+- `category` (optional): Filter by category name (e.g., `Government Portal`, `Startup Support`, `Research`, `Regulatory`, `Guide`, `Government Scheme`). Case-insensitive; passing `All` or omitting returns all categories.
+- `search` (optional): Case-insensitive search query matching against resource `title`, `category`, `summary`, and `description`.
+- `page` (optional): Positive integer, default `1`.
+- `limit` (optional): Positive integer between `1` and `50`, default `10`.
 
 **Success `200`:** Paginated list using the common pagination envelope from Section 5:
 ```json
@@ -960,24 +964,62 @@ Resources are publicly accessible guides and FAQs (read-only for non-admins). Th
   "data": {
     "items": [
       {
+        "id": "res_001",
+        "title": "Ministry of AYUSH — Official Portal",
+        "category": "Government Portal",
+        "summary": "Access official guidelines, policies, and notifications from the Ministry of AYUSH, Government of India.",
+        "description": "Access official guidelines, policies, and notifications from the Ministry of AYUSH, Government of India.",
+        "url": "https://ayush.gov.in",
+        "type": "official",
+        "isAvailable": true,
+        "publishedAt": null
+      },
+      {
         "id": "res_007",
         "title": "AYUSH Startup Registration Guide",
         "category": "Guide",
-        "summary": "A guide to registering an AYUSH startup on the portal.",
-        "url": "#",
+        "summary": "A comprehensive step-by-step walkthrough covering registration wizard steps, document requirements, and verification workflows on the AYUSH portal.",
+        "description": "A comprehensive step-by-step walkthrough covering registration wizard steps, document requirements, and verification workflows on the AYUSH portal.",
+        "url": "/how-it-works",
+        "type": "internal",
+        "isAvailable": true,
+        "publishedAt": null
+      },
+      {
+        "id": "res_011",
+        "title": "Clinical Trial Registry — India (CTRI) AYUSH Guidelines",
+        "category": "Research",
+        "summary": "Protocols and regulatory requirements for clinical trials in traditional Indian medicine. Detailed documentation is currently under review.",
+        "description": "Protocols and regulatory requirements for clinical trials in traditional Indian medicine. Detailed documentation is currently under review.",
+        "url": null,
+        "type": "official",
+        "isAvailable": false,
         "publishedAt": null
       }
     ],
-    "pagination": { "page": 1, "limit": 10, "total": 1, "totalPages": 1 }
+    "pagination": { "page": 1, "limit": 10, "total": 11, "totalPages": 2 }
   }
 }
 ```
 
+**Resource Object Fields:**
+- `id` (string): Stable identifier (e.g., `res_001`).
+- `title` (string): Display title of the resource or portal.
+- `category` (string): Categorization (`Government Portal`, `Startup Support`, `Research`, `Regulatory`, `Guide`, `Government Scheme`).
+- `summary` (string): Concise summary of the resource content.
+- `description` (string): Matches summary for full backward compatibility across frontend components.
+- `url` (string | null): Verified destination URL. External URLs use absolute HTTPS schemes (`https://...`); internal portal guides use relative paths (e.g., `/how-it-works`). Resources pending publication or documentation review have `url: null`.
+- `type` (string): Classification for frontend badges and icons (`official`, `guide`, `internal`).
+- `isAvailable` (boolean): `true` if active and accessible; `false` if documentation is under review or temporarily unavailable.
+- `publishedAt` (string | null): ISO timestamp or `null` for static curated resources.
+
 ### `GET /api/resources/:id`
 
-**Auth:** None
+**Auth:** None (public) or authenticated
 
-**Success `200`:** `{ "success": true, "data": <resource object> }`. Static resource IDs are strings; `publishedAt` is `null` when the curated entry has no publication date.
+**Success `200`:** `{ "success": true, "data": <resource object> }`. Returns the single resource matching the provided ID.
+
+**Error `404`:** `{ "success": false, "error": "Resource not found." }` when no resource matches the provided ID.
 
 ---
 
