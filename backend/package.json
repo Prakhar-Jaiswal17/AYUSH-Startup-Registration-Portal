@@ -10,6 +10,7 @@
     "db:status": "prisma migrate status",
     "db:seed": "node prisma/seed.js",
     "dev": "nodemon src/server.js",
+    "test:resources": "node test-resources.js",
     "start": "node src/server.js"
   },
   "keywords": [],
