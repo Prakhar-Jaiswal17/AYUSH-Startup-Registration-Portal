@@ -1,6 +1,6 @@
 # User Roles, Permissions, and Use Case Analysis
 
-This document describes target roles and permissions. Backend authentication and authorization are implemented for the current auth, startup profile, and startup application routes. Real login, registration, logout, and session restoration are connected to `AuthContext`; live startup profile display and applicant application list/detail/draft/submission screens use those APIs. Demo-role sign-in and demo applicant state remain local. Document upload, clarification responses, officer review APIs, notifications, and related authorization workflows are not complete. See [implementation-status.md](./implementation-status.md).
+This document describes target roles and permissions and notes the live API behavior. Real login, registration, logout, and session restoration are connected to `AuthContext`; live applicant profile/application flows use the backend. Officers can load assigned applications and start review or decide applications; admins can load the non-draft queue, assign officers, and use review actions. Demo-role sign-in and demo workflows remain local. Document upload/verification, clarification workflows, and notification screens/APIs remain incomplete. See [implementation-status.md](./implementation-status.md).
 
 ## 1. Overview of Stakeholders
 
@@ -37,15 +37,15 @@ The primary external consumer of the portal. The applicant is responsible for re
 ### 2.2 Government Official / Reviewer
 
 #### Role Description
-The internal domain expert responsible for compliance verification. The reviewer accesses assigned or pooled applications, conducts rigorous due diligence on claims, verifies laboratory or licensing documents, and either grants approval, flags issues, or rejects non-compliant submissions.
+The internal domain expert responsible for compliance verification. The reviewer accesses applications assigned to their account, conducts due diligence on claims, reviews available application details, and records portal workflow decisions.
 
 #### Key Functionalities & Permissions:
-- **Review Queue Management**: Access the centralized incoming application inbox; filter by AYUSH discipline, submission date, or status.
+- **Review Queue Management**: Access applications assigned to the reviewer; filter the connected queue by AYUSH discipline or status.
 - **Application Evaluation**: Inspect full application details, including company profile, innovation description, and founder credentials.
-- **Document Scrutiny**: Open and review uploaded legal and testing documents in an integrated viewer.
+- **Document Scrutiny**: Review document metadata in the current screen. File viewing and verification are not connected yet.
 - **Query Raising**: Raise structured clarification requests citing missing paperwork, unverified claims, or license discrepancies.
-- **Adjudication**: Approve compliant applications or reject non-compliant applications with formal rationale and remarks.
-- **Decision Audit Trail**: Record timestamps, internal reviewer notes, and decision logs for full transparency.
+- **Adjudication**: Start review for submitted or resubmitted applications, then approve or reject an under-review application. Rejection requires a reason.
+- **Decision Audit Trail**: Review start and decision transitions create status-history and audit records. Decision time and remarks are derived from status history; no separate review timestamp or application remarks field is stored.
 
 #### Operational Restrictions:
 - Cannot create or submit startup registration applications.
@@ -62,12 +62,14 @@ The system custodian responsible for platform stability, role provisioning, secu
 #### Key Functionalities & Permissions:
 - **User & Role Administration**: Create, activate, deactivate, or reassign reviewer and administrative accounts; manage user states.
 - **Master Data Configuration**: Maintain system lists (e.g., supported AYUSH streams, document checklists, allowable file sizes, guidelines).
-- **System-wide Visibility**: View all applications, review queues, and decisions across all departments.
+- **System-wide Visibility**: View all non-draft applications and review decisions across departments.
+- **Officer Assignment**: Assign or reassign an officer to a submitted or in-progress application.
+- **Review Screen Access**: The current API also authorizes administrators to start review and record approve/reject decisions.
 - **Analytics & Reporting**: View high-level analytical dashboards detailing registration trends, regional distributions, average processing duration, and approval/rejection ratios.
 - **Audit & Compliance Oversight**: Inspect system audit logs, track security events, and verify protocol compliance.
 
 #### Operational Restrictions:
-- Does not conduct routine technical application reviews (maintains separation of duties from reviewers).
+- In the target operating model, routine domain review belongs to the reviewer role. Current review endpoints also authorize administrators to run review transitions.
 - Cannot tamper with or overwrite immutable audit records.
 
 ---
@@ -83,10 +85,11 @@ The following matrix details the permissions granted to each role across key sys
 | | Deactivate Users | Denied | Denied | Allowed |
 | **Application** | Create New Application | Allowed | Denied | Denied |
 | | Edit Draft Application | Allowed (Own) | Denied | Denied |
-| | View Application Details | Allowed (Own) | Allowed (All/Assigned) | Allowed (All) |
+| | View Application Details | Allowed (Own) | Allowed (Assigned) | Allowed (All non-draft) |
 | | Edit when Query Raised | Allowed (Own) | Denied | Denied |
-| | Change Status to Under Review | Denied | Allowed | Denied |
-| | Change Status to Approved/Rejected | Denied | Allowed | Denied |
+| | Assign Reviewer | Denied | Denied | Allowed (submitted/in-progress) |
+| | Change Status to Under Review | Denied | Allowed (Assigned) | Allowed |
+| | Change Status to Approved/Rejected | Denied | Allowed (Assigned, under review) | Allowed (under review) |
 | **Documents** | Upload Documents | Allowed (Own) | Denied | Denied |
 | | View/Download Documents | Allowed (Own) | Allowed (All/Assigned) | Allowed (All) |
 | | Replace/Upload Additional Docs | Allowed (Query State) | Denied | Denied |

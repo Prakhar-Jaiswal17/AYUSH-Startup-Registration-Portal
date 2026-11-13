@@ -233,7 +233,7 @@ The following earlier contract fields have no persistence column and must not be
 
 ### Route mounting in `server.js`
 
-Prakhar maintains route registration in `backend/src/server.js`. Route owners provide their module path and coordinate with Prakhar before it is mounted. The existing public resources route is already mounted. Other collaborators should not edit `server.js` without coordinating with Prakhar.
+Prakhar maintains route registration in `backend/src/server.js`. The officer router for the connected review APIs is mounted at `/api/officer`; future route owners should coordinate route registration with Prakhar before adding route modules.
 
 ---
 
@@ -745,13 +745,53 @@ Officer marks a query as resolved.
 
 ### `GET /api/officer/applications`
 
-Get all applications assigned to the authenticated officer, or all submitted applications for ADMIN.
+Get all non-draft applications assigned to the authenticated officer, or all non-draft applications for ADMIN.
 
 **Auth:** `OFFICER`, `ADMIN`
 
 **Query params:** `status`, `categoryCode`, `page`, `limit`, `search` (startup legal name or tracking number)
 
-**Success `200`:** Paginated list of applications (same item shape as [Section 10 GET /api/applications](#get-apiapplications)).
+**Success `200`:** Paginated reviewer queue. Drafts are excluded. Officers receive only applications assigned to their account; ADMIN receives all non-draft applications.
+
+Each item includes `id`, `trackingNumber`, API `status`, `legalName`, `startupName`, `brandName`, `categoryCode`, `categoryName`, `state`, `assignedOfficer` (`{ id, name }` or `null`), `submittedAt`, `lastUpdated`, and `createdAt`.
+
+```json
+{
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "id": "APP-2026-007",
+        "trackingNumber": "APP-2026-007",
+        "status": "SUBMITTED",
+        "legalName": "AyurTech Innovations Pvt. Ltd.",
+        "startupName": "AyurTech Innovations Pvt. Ltd.",
+        "brandName": "AyurTech",
+        "categoryCode": "AYURVEDA",
+        "categoryName": "Ayurveda",
+        "state": "Maharashtra",
+        "assignedOfficer": { "id": "uuid", "name": "Dr. Priya Nair" },
+        "submittedAt": "2026-11-14T10:00:00.000Z",
+        "lastUpdated": "2026-11-14T10:00:00.000Z",
+        "createdAt": "2026-11-12T09:00:00.000Z"
+      }
+    ],
+    "pagination": { "page": 1, "limit": 10, "total": 1, "totalPages": 1 }
+  }
+}
+```
+
+`status` accepts the API values in Section 3. `categoryCode` must be an AYUSH category code. `search` matches an application tracking ID or startup legal name. `limit` is 1–50.
+
+---
+
+### `GET /api/officer/officers`
+
+List officer accounts for the admin assignment control.
+
+**Auth:** `ADMIN` only
+
+**Success `200`:** Array of officer objects with `id`, `name`, `email`, `phone`, `designation`, `department`, `assignedStates`, and `createdAt`. The current schema has no account-activation field, so this endpoint returns users with role `officer` without an active/inactive filter.
 
 ---
 
@@ -768,7 +808,9 @@ Assign an officer to an application.
 }
 ```
 
-**Success `200`:** Updated application with `assignedOfficer` populated.
+The selected user must have the `officer` role. Draft and final (`APPROVED`/`REJECTED`) applications cannot be assigned; submitted and in-progress applications can be reassigned.
+
+**Success `200`:** Updated full application object as described in [Section 10 GET /api/applications/:id](#get-apiapplicationsid), with `assignedOfficer` populated.
 
 ---
 
@@ -791,7 +833,7 @@ Officer starts reviewing a submitted application. Status transitions to `UNDER_R
 }
 ```
 
-The review start time can be derived from the matching status-history entry; it is not a separate application column.
+Only `SUBMITTED` or `RESUBMITTED` may enter `UNDER_REVIEW`. The actor must be the assigned officer unless the actor is ADMIN. The transition writes a status-history entry and audit event. The review start time can be derived from the matching history entry; it is not a separate application column.
 
 ---
 
@@ -829,7 +871,7 @@ Officer approves or rejects an application.
 }
 ```
 
-**Notes:** Backend records status history and creates notification to startup. For `APPROVED`, the team must agree whether to add a portal recognition reference field or defer it; the current schema has no `metadata` field. Prakhar and Arnav coordinate any related API or schema amendment before implementation.
+**Notes:** Only `UNDER_REVIEW` applications may be decided. The assigned officer or ADMIN may act; rejection requires a non-empty reason. Backend records the remark in status history, creates an audit event, and inserts a status-update notification for the startup. Notification read/list APIs and screens are separate and are not implemented yet. No certificate number or statutory approval is issued. For `APPROVED`, the team must agree whether to add a portal recognition reference field or defer it; the current schema has no `metadata` field. Prakhar and Arnav coordinate any related API or schema amendment before implementation.
 
 ---
 
@@ -1129,11 +1171,11 @@ export const STATUS_COLORS = {
 
 ### Frontend implementation status
 
-- The API client wrappers follow the endpoint shapes in this document. The public and startup resources pages consume `resourceAPI`; `AuthContext` consumes auth and startup profile endpoints; `ApplicationContext` and applicant profile/list/detail/draft/submission screens consume the startup/application endpoints for live startup accounts. Demo applicant flows remain local, and `NotificationContext` remains mock-backed.
+- The API client wrappers follow the endpoint shapes in this document. The public and startup resources pages consume `resourceAPI`; `AuthContext` consumes auth and startup profile endpoints; applicant screens consume startup/application endpoints for live startup accounts. Officer/admin queues, assignment, review start, and decision actions are connected to the API. Demo flows remain local, and `NotificationContext` remains mock-backed.
 - The client-side `generateAppId()` helper was removed. The local demo uses an internal `mock-…` record ID and leaves `trackingNumber` empty; only the backend may generate the database application ID in the required formatted string.
 - Native `alert()` feedback was removed from `NewApplication.jsx` and replaced with inline feedback. Other prototype pages may still contain placeholder alerts.
-- Auth, startup profile, and core application endpoints are implemented. Real auth and startup profile loading are connected to `AuthContext`; `ApplicationContext` fetches live application lists and supports create/update/submit. The seven-step form maps AYUSH labels to seeded category codes and stores regulatory/business answers in the documented JSON fields. Demo mode remains local. Officer/query/notification/document/admin backend routes and UI integrations are still incomplete.
-- Application detail reads server status history, founders, and document metadata. The live applicant flow does not upload documents or respond to clarification queries because those APIs are not yet connected. Founder records belong to the startup profile and cannot hold application-specific founder snapshots in this schema.
+- Auth, startup profile, core application, officer queue, assignment, review-start, and decision endpoints are implemented. Real applicant flows and officer/admin review screens consume their APIs for live sessions. The seven-step form maps AYUSH labels to seeded category codes and stores regulatory/business answers in the documented JSON fields. Demo mode remains local. Query, notification-list/read, document, admin account-management/analytics, and category backend routes and UI integrations remain incomplete.
+- Application detail reads server status history, founders, and document metadata. The live applicant flow does not upload documents or respond to clarification queries because those APIs are not yet connected. The officer review page displays document metadata but does not open or verify files. Founder records belong to the startup profile and cannot hold application-specific founder snapshots in this schema.
 - See [implementation-status.md](./implementation-status.md) for backend readiness and SQL/Prisma alignment gaps.
 
 ### Database compatibility rule

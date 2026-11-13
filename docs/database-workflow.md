@@ -1,6 +1,6 @@
 # Database Workflow and Data Flow Mapping
 
-This document describes the intended data flow and transaction boundaries; rows and sequence steps not called out as live remain design mappings. The backend has auth, startup profile, core application, and resources routes. Real auth flows and startup profile loading are connected to `AuthContext`; the applicant application list/detail/draft/submission flows use the application API for live startup accounts. Demo application flows remain local. Notification, document, clarification, and review workflows remain unconnected. The API contract is still a draft. See [implementation-status.md](./implementation-status.md).
+This document describes the intended data flow and transaction boundaries; rows and sequence steps not called out as live remain design mappings. The backend has auth, startup profile, core application, resources, and officer-review routes. Real auth flows, startup profile and application flows, and officer/admin queue, assignment, review-start, and decision actions are connected for API sessions. Demo application flows remain local. Document, clarification, and notification list/read workflows remain unconnected. The API contract is still a draft. See [implementation-status.md](./implementation-status.md).
 
 ## 1. Overview
 
@@ -24,7 +24,7 @@ This document defines how frontend actions, component state transitions, and use
 
 ## 3. Intended End-to-End Application Data Flow
 
-The sequence diagram is the target workflow. For live startup accounts, the React application context consumes draft create/list/detail/update/submit endpoints; startup profile loading uses `/api/startups/me`. File upload, clarification responses, officer review, and notification API calls shown here are not implemented in the applicant UI yet.
+The sequence diagram is the target workflow. For live startup accounts, the React application context consumes draft create/list/detail/update/submit endpoints; startup profile loading uses `/api/startups/me`. Officer/admin review queues, assignment, review start, and approve/reject actions are connected. File upload/verification and clarification workflows are not connected, and notification list/read APIs are not implemented.
 
 ```mermaid
 sequenceDiagram

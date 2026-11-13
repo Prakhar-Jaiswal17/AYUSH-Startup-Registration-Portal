@@ -193,4 +193,162 @@ router.post('/:id/submit', authenticate, allowRoles('startup'), asyncHandler(asy
     return res.json({ success: true, data: { id: saved.id, trackingNumber: saved.id, status: STATUS_TO_API[saved.status], submittedAt: saved.submittedAt } })
 }))
 
+router.patch('/:id/assign', authenticate, allowRoles('admin'), asyncHandler(async (req, res) => {
+    requireObjectBody(req.body)
+    const officerId = typeof req.body.officerId === 'string' ? req.body.officerId.trim() : ''
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(officerId)) {
+        throw httpError(422, 'Validation failed', { officerId: 'Choose a valid officer ID.' })
+    }
+
+    const [application, officer] = await Promise.all([
+        prisma.application.findUnique({ where: { id: req.params.id }, select: { id: true, status: true, assignedOfficerId: true } }),
+        prisma.user.findUnique({ where: { id: officerId }, select: { id: true, fullName: true, role: true } }),
+    ])
+    if (!application) throw httpError(404, 'Application not found.')
+    if (!officer || officer.role !== 'officer') throw httpError(422, 'The selected user is not a review officer.', { officerId: 'Choose an officer account.' })
+    if (!['Submitted', 'Under Review', 'Clarification Required', 'Resubmitted'].includes(application.status)) {
+        throw httpError(409, 'Only submitted applications can be assigned for review.')
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+        const assignment = await tx.application.updateMany({
+            where: {
+                id: application.id,
+                status: { in: ['Submitted', 'Under Review', 'Clarification Required', 'Resubmitted'] },
+                assignedOfficerId: application.assignedOfficerId,
+            },
+            data: { assignedOfficerId: officer.id, lastUpdated: new Date() },
+        })
+        if (assignment.count !== 1) {
+            throw httpError(409, 'The application status or assignment changed. Refresh the queue and try again.')
+        }
+        return tx.application.findUnique({ where: { id: application.id }, include: includeApplication })
+    })
+    await recordAudit({
+        actor: req.user,
+        action: 'APPLICATION_ASSIGNED',
+        targetEntity: 'Application',
+        targetId: updated.id,
+        details: `Assigned to ${officer.fullName} (${officer.id}).`,
+    })
+
+    return res.json({ success: true, data: applicationDto(updated) })
+}))
+
+router.patch('/:id/review', authenticate, allowRoles('officer', 'admin'), asyncHandler(async (req, res) => {
+    const result = await prisma.$transaction(async (tx) => {
+        const application = await tx.application.findUnique({
+            where: { id: req.params.id },
+            select: { id: true, status: true, assignedOfficerId: true },
+        })
+        if (!application) throw httpError(404, 'Application not found.')
+        if (req.user.role === 'officer' && application.assignedOfficerId !== req.user.id) {
+            throw httpError(403, 'This application is not assigned to you.')
+        }
+        if (!['Submitted', 'Resubmitted'].includes(application.status)) {
+            throw httpError(409, 'Only submitted or resubmitted applications can enter review.')
+        }
+
+        const updatedAt = new Date()
+        const transition = await tx.application.updateMany({
+            where: {
+                id: application.id,
+                status: application.status,
+                ...(req.user.role === 'officer' ? { assignedOfficerId: req.user.id } : {}),
+            },
+            data: { status: 'Under Review', lastUpdated: updatedAt },
+        })
+        if (transition.count !== 1) {
+            throw httpError(409, 'The application status or assignment changed. Refresh the review and try again.')
+        }
+        await tx.applicationStatusHistory.create({
+            data: {
+                applicationId: application.id,
+                previousStatus: application.status,
+                status: 'Under Review',
+                remark: 'Review started.',
+                actorId: req.user.id,
+            },
+        })
+        return { id: application.id, status: 'Under Review' }
+    })
+
+    await recordAudit({ actor: req.user, action: 'APPLICATION_REVIEW_STARTED', targetEntity: 'Application', targetId: result.id })
+    return res.json({ success: true, data: { ...result, trackingNumber: result.id, status: STATUS_TO_API[result.status] } })
+}))
+
+router.patch('/:id/decide', authenticate, allowRoles('officer', 'admin'), asyncHandler(async (req, res) => {
+    requireObjectBody(req.body)
+    const fields = {}
+    const decision = req.body.decision
+    if (!['APPROVED', 'REJECTED'].includes(decision)) fields.decision = 'Choose APPROVED or REJECTED.'
+    if (req.body.officerRemarks !== undefined && typeof req.body.officerRemarks !== 'string') {
+        fields.officerRemarks = 'Must be a string.'
+    }
+    const suppliedRemarks = typeof req.body.officerRemarks === 'string' ? req.body.officerRemarks.trim() : ''
+    if (decision === 'REJECTED' && !suppliedRemarks) fields.officerRemarks = 'A reason is required when rejecting an application.'
+    if (suppliedRemarks.length > 4000) fields.officerRemarks = 'Must be 4000 characters or fewer.'
+    if (Object.keys(fields).length) throw httpError(422, 'Validation failed', fields)
+
+    const nextStatus = decision === 'APPROVED' ? 'Approved' : 'Rejected'
+    const remark = suppliedRemarks || 'Application approved by the review officer.'
+    const result = await prisma.$transaction(async (tx) => {
+        const application = await tx.application.findUnique({
+            where: { id: req.params.id },
+            select: { id: true, status: true, assignedOfficerId: true, startup: { select: { userId: true } } },
+        })
+        if (!application) throw httpError(404, 'Application not found.')
+        if (req.user.role === 'officer' && application.assignedOfficerId !== req.user.id) {
+            throw httpError(403, 'This application is not assigned to you.')
+        }
+        if (application.status !== 'Under Review') {
+            throw httpError(409, 'Start the application review before recording a decision.')
+        }
+
+        const transition = await tx.application.updateMany({
+            where: {
+                id: application.id,
+                status: 'Under Review',
+                ...(req.user.role === 'officer' ? { assignedOfficerId: req.user.id } : {}),
+            },
+            data: { status: nextStatus, lastUpdated: new Date() },
+        })
+        if (transition.count !== 1) {
+            throw httpError(409, 'The application status or assignment changed. Refresh the review and try again.')
+        }
+        await tx.applicationStatusHistory.create({
+            data: {
+                applicationId: application.id,
+                previousStatus: application.status,
+                status: nextStatus,
+                remark,
+                actorId: req.user.id,
+            },
+        })
+        await tx.notification.create({
+            data: {
+                userId: application.startup.userId,
+                applicationId: application.id,
+                title: `Application ${nextStatus}`,
+                message: `Application ${application.id} has been ${nextStatus.toLowerCase()}.`,
+                type: 'status_update',
+            },
+        })
+
+        return { id: application.id, status: nextStatus }
+    })
+
+    await recordAudit({
+        actor: req.user,
+        action: `APPLICATION_${decision}`,
+        targetEntity: 'Application',
+        targetId: result.id,
+        details: remark,
+    })
+    return res.json({
+        success: true,
+        data: { ...result, trackingNumber: result.id, status: STATUS_TO_API[result.status], officerRemarks: remark },
+    })
+}))
+
 module.exports = router

@@ -131,6 +131,7 @@ export default function App() {
       >
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/applications" element={<AdminApplications />} />
+        <Route path="/admin/applications/:id" element={<OfficerApplicationReview />} />
         <Route path="/admin/users" element={<AdminUsers />} />
         <Route path="/admin/officers" element={<AdminOfficers />} />
         <Route path="/admin/categories" element={<AdminCategories />} />

@@ -127,6 +127,7 @@ export const officerAPI = {
   getAssigned: (officerOrParams, params) => api.get('/officer/applications', {
     params: params ?? (typeof officerOrParams === 'object' ? officerOrParams : undefined),
   }),
+  getOfficers: () => api.get('/officer/officers'),
   assign: (applicationId, data) => api.patch(`/applications/${applicationId}/assign`, data),
   startReview: (applicationId) => api.patch(`/applications/${applicationId}/review`),
   decide: (applicationId, data) => api.patch(`/applications/${applicationId}/decide`, data),

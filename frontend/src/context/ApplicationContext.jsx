@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { mockApplications, mockDocuments } from '../data/mockData';
 import { useAuth } from './AuthContext';
-import { applicationAPI, getApiErrorMessage } from '../services/api';
+import { applicationAPI, getApiErrorMessage, officerAPI } from '../services/api';
 import { getStatusLabel } from '../utils/statusHelpers';
 
 const ApplicationContext = createContext(null);
@@ -33,6 +33,7 @@ function responseData(response) {
 }
 
 function mapApplicationSummary(application, startupId) {
+  const assignedOfficer = application.assignedOfficer;
   return {
     ...application,
     startupId: startupId || null,
@@ -40,6 +41,8 @@ function mapApplicationSummary(application, startupId) {
     brandName: application.brandName || application.legalName || '',
     ayushDomain: application.categoryName || application.categoryCode || application.ayushDomain || '',
     status: getStatusLabel(application.status),
+    assignedOfficer: typeof assignedOfficer === 'object' ? assignedOfficer?.id || null : assignedOfficer || null,
+    assignedOfficerName: typeof assignedOfficer === 'object' ? assignedOfficer?.name || '' : application.assignedOfficerName || '',
     timeline: application.statusHistory || application.timeline || [],
     documents: application.documents || [],
   };
@@ -52,6 +55,7 @@ export function ApplicationProvider({ children }) {
   const [applicationLoading, setApplicationLoading] = useState(true);
   const [applicationError, setApplicationError] = useState('');
   const isLiveStartup = isApiSession && user?.role === 'startup';
+  const isLiveReviewer = isApiSession && ['officer', 'admin'].includes(user?.role);
 
   const saveMockApplications = useCallback((nextApplications) => {
     setApplications(nextApplications);
@@ -72,17 +76,18 @@ export function ApplicationProvider({ children }) {
   }, []);
 
   const refreshApplications = useCallback(async () => {
-    if (!isLiveStartup) return [];
+    if (!isLiveStartup && !isLiveReviewer) return [];
 
     setApplicationLoading(true);
     setApplicationError('');
     try {
-      const firstPage = responseData(await applicationAPI.getAll({ page: 1, limit: 50 }));
+      const getPage = isLiveStartup ? applicationAPI.getAll : officerAPI.getAssigned;
+      const firstPage = responseData(await getPage({ page: 1, limit: 50 }));
       const allItems = [...(firstPage.items || [])];
       const totalPages = Math.max(1, firstPage.pagination?.totalPages || 1);
 
       for (let page = 2; page <= totalPages; page += 1) {
-        const nextPage = responseData(await applicationAPI.getAll({ page, limit: 50 }));
+        const nextPage = responseData(await getPage({ page, limit: 50 }));
         allItems.push(...(nextPage.items || []));
       }
 
@@ -96,12 +101,12 @@ export function ApplicationProvider({ children }) {
     } finally {
       setApplicationLoading(false);
     }
-  }, [isLiveStartup, startup?.id]);
+  }, [isLiveReviewer, isLiveStartup, startup?.id]);
 
   useEffect(() => {
     if (authLoading) return;
 
-    if (isLiveStartup) {
+    if (isLiveStartup || isLiveReviewer) {
       setApplications([]);
       setDocuments([]);
       refreshApplications().catch(() => {});
@@ -117,7 +122,7 @@ export function ApplicationProvider({ children }) {
       setApplications([]);
       setDocuments([]);
     }
-  }, [authLoading, isApiSession, isLiveStartup, refreshApplications, user]);
+  }, [authLoading, isApiSession, isLiveReviewer, isLiveStartup, refreshApplications, user]);
 
   const getApplicationsByStartup = useCallback((startupId) => {
     if (!startupId) return [];
@@ -217,8 +222,29 @@ export function ApplicationProvider({ children }) {
     return result;
   }, [applications, isApiSession, isLiveStartup, refreshApplications, saveMockApplications]);
 
+  const assignApplication = useCallback(async (applicationId, officerId) => {
+    if (!isApiSession || user?.role !== 'admin') throw new Error('Only administrators can assign review officers.');
+    const assigned = responseData(await officerAPI.assign(applicationId, { officerId }));
+    await refreshApplications().catch(() => {});
+    return assigned;
+  }, [isApiSession, refreshApplications, user?.role]);
+
+  const startApplicationReview = useCallback(async (applicationId) => {
+    if (!isApiSession || !['officer', 'admin'].includes(user?.role)) throw new Error('Review actions are available to officers and administrators.');
+    const started = responseData(await officerAPI.startReview(applicationId));
+    await refreshApplications().catch(() => {});
+    return started;
+  }, [isApiSession, refreshApplications, user?.role]);
+
+  const decideApplication = useCallback(async (applicationId, decision, officerRemarks) => {
+    if (!isApiSession || !['officer', 'admin'].includes(user?.role)) throw new Error('Review actions are available to officers and administrators.');
+    const decided = responseData(await officerAPI.decide(applicationId, { decision, officerRemarks }));
+    await refreshApplications().catch(() => {});
+    return decided;
+  }, [isApiSession, refreshApplications, user?.role]);
+
   const updateApplicationStatus = useCallback((applicationId, status, remark, officerName) => {
-    if (isApiSession) throw new Error('Application review APIs are not connected yet.');
+    if (isApiSession) throw new Error('This status change is not available through the connected API workflow yet.');
     const updatedApplications = (applications || []).map((application) => {
       if (application?.id !== applicationId) return application;
       const updatedAt = new Date().toISOString();
@@ -299,6 +325,9 @@ export function ApplicationProvider({ children }) {
     createApplication,
     updateApplication,
     submitApplication,
+    assignApplication,
+    startApplicationReview,
+    decideApplication,
     updateApplicationStatus,
     addDocument,
     updateDocumentStatus,

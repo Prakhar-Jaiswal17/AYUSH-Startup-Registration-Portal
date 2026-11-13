@@ -1,6 +1,6 @@
 # Application Workflow and Lifecycle Specification
 
-This describes the application workflow. For live startup accounts, the React applicant screens load applications and status history from the backend and support server-backed draft creation, editing, and submission with tracking IDs. Demo accounts keep the local mock flow. Document upload, clarification responses, notifications, and officer review are not yet connected end to end. Portal outcomes must not be described as statutory AYUSH licences or regulatory approvals. See [implementation-status.md](./implementation-status.md).
+This describes the target lifecycle and the connected workflow. Live startup accounts use the backend for application list/detail, draft create/edit, and submission. Officers use an assigned review queue, and admins can view the non-draft queue and assign officers. Review start and approve/reject transitions are connected and recorded in status history. Demo accounts keep the local mock flow. Document upload/verification, clarification responses, and notification screens/APIs are not connected end to end. Portal outcomes are internal workflow decisions and must not be described as statutory AYUSH licences or regulatory approvals. See [implementation-status.md](./implementation-status.md).
 
 ## 1. Introduction
 
@@ -39,12 +39,13 @@ The target **AYUSH Startup Registration Portal** follows a structured, transpare
 1. **Review Summary**: The applicant reviews an aggregated preview of the complete application and attached documents.
 2. **Legal Undertaking & Declaration**: The applicant confirms that all provided information is accurate and compliant with Ministry of AYUSH norms.
 3. **Submission**: The application state transitions from `DRAFT` to `SUBMITTED`.
-4. **Tracking ID Generation**: The backend assigns a unique tracking number in the contract format `APP-YYYY-NNN` and dispatches a confirmation notification. This server-generated identifier is not yet implemented; the frontend demo must not fabricate it. The application is then locked against direct edits.
+4. **Tracking ID Generation**: The backend assigns a unique tracking number in the contract format `APP-YYYY-NNN` and stores a submission notification record. The in-app notification list/read flow is not connected. The frontend demo must not fabricate the server ID. The application is then locked against direct edits.
 
 ### Stage 5: Reviewer Queue & Evaluation
-1. **Reviewer Inbox**: The application appears in the Government Reviewer's active review pool.
-2. **Claiming / Assignment**: A reviewer opens the application, transitioning the status from `SUBMITTED` to `UNDER_REVIEW`.
-3. **Verification Process**:
+1. **Reviewer Inbox**: The API queue excludes drafts. An officer sees applications assigned to their account; an administrator sees all non-draft applications.
+2. **Assignment**: An administrator can assign or reassign an officer on a submitted or in-progress application. Drafts and final decisions cannot be assigned.
+3. **Start Review**: The assigned officer or an administrator transitions a `SUBMITTED` or `RESUBMITTED` application to `UNDER_REVIEW`. The API records status history and an audit event.
+4. **Verification Process**:
    - Scrutinize business and innovation claims against AYUSH criteria.
    - Validate attached regulatory, incorporation, and lab testing documents.
    - Review the portal application criteria and inspect relevant supporting documents. A portal decision does not grant or replace approvals from competent regulatory authorities.
@@ -60,7 +61,7 @@ If discrepancies, unreadable files, or missing information are discovered:
 1. **Approval Path**:
    - The reviewer verifies full compliance and approves the application.
    - The status updates to `APPROVED`.
-   - The portal records the application outcome as `APPROVED` and notifies the applicant.
+   - The portal records the application outcome as `APPROVED` and inserts a status-update notification record for the applicant. Notification list/read APIs and screens are not yet connected.
    - If a portal acknowledgement is later included in scope, it must be labeled as an internal administrative record and must not imply statutory licensing, regulatory approval, or legal certification.
 2. **Rejection Path**:
    - If the application fails fundamental regulatory criteria or fraudulent documents are detected, the reviewer rejects the submission.
@@ -70,7 +71,7 @@ If discrepancies, unreadable files, or missing information are discovered:
 ### Stage 8: Real-Time Status Tracking & Notifications
 - Throughout the process, the applicant tracks progress via a dynamic status timeline.
 - Every state transition generates:
-  - An in-app status update.
+  - A status-update notification record for submission and final decisions. The full in-app notification workflow is not yet connected.
   - An immutable entry in the `ApplicationStatusHistory` audit table.
 
 ---

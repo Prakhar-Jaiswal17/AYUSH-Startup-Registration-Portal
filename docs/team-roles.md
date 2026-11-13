@@ -8,13 +8,13 @@ The API proposal and endpoint ownership are detailed in [api-contract.md](./api-
 
 **Implemented in the repository:** shared Prisma client and database connection, JWT authentication middleware, registration/login/profile/logout endpoints, startup profile endpoints, startup application draft/read/update/submit/status-history endpoints, validation, tracking identifiers, ownership rules, and route mounting.
 
-**Remaining:** review and confirm the API contract with Arnav; help run the complete startup-to-officer workflow once Arnav's UI and review APIs are connected; address integration issues in the routes owned here.
+**Remaining:** review and confirm the API contract with Arnav; help run the complete startup-to-officer workflow with Arnav; address integration issues in the routes owned here.
 
 ## Arnav
 
-**Implemented in the repository:** real login, registration, logout, and session restoration use the auth API; API roles are normalized for React, and the bearer token is stored for protected requests. Startup profile display and the applicant application list, detail, draft creation/editing, and submission use Prakhar's APIs for live accounts, including server-issued tracking IDs. Demo role sign-in and demo applicant workflows remain local. Frontend API wrappers also exist for officer, queries, documents, admin, notifications, resources, and categories; wrappers alone do not mean those flows are integrated.
+**Implemented in the repository:** real login, registration, logout, and session restoration use the auth API; API roles are normalized for React, and the bearer token is stored for protected requests. Startup profile display and applicant application list, detail, draft creation/editing, and submission use the backend for live accounts, including server-issued tracking IDs. Officer accounts load their assigned queue and use the review-start and decision APIs; admin accounts load the non-draft queue, assign officers, and can open the review screen. Demo role sign-in and demo workflows remain local. Document, query, notification, admin account-management, and analytics wrappers or screens do not yet form connected workflows.
 
-**Remaining:** implement officer queue, assignment, review, and decision APIs; implement clarification-query and notification APIs; connect officer/admin review screens; collaborate with Prakhar on end-to-end workflow verification. Document upload/verification remains unassigned and requires coordination before its API and storage flow is built.
+**Remaining:** implement clarification-query and notification APIs; connect the clarification and notification screens; collaborate with Prakhar on end-to-end workflow verification. Document upload/verification remains unassigned and requires coordination before its API and storage flow is built.
 
 ## Sarth
 
@@ -30,4 +30,4 @@ The current plan does not explicitly assign:
 - An AYUSH categories API (the frontend wrapper exists, but no backend route is mounted).
 - Admin analytics, user-management, and audit-log APIs and their live UI integration.
 
-Decide whether these are required for the project release and assign owners. Admin review-screen integration is assigned to Arnav. Prakhar owns mounting any routes agreed by the team; coordinate route and contract changes with the relevant owner.
+Decide whether these are required for the project release and assign owners. Admin review-screen integration is assigned to Arnav. Coordinate any further route mounting and contract changes with Prakhar and the relevant owner.

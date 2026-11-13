@@ -10,6 +10,7 @@ import {
   Clock,
   AlertCircle,
   RotateCcw,
+  RefreshCw,
   Building2,
   Calendar,
   MapPin,
@@ -45,8 +46,9 @@ const domainOpts = [
 const PER_PAGE = 6;
 
 export default function OfficerApplications() {
-  const { user } = useAuth();
-  const { applications, resetToMockData } = useApplications();
+  const { user, isApiSession } = useAuth();
+  const { applications, resetToMockData, applicationLoading, applicationError, refreshApplications } = useApplications();
+  const isLiveOfficer = isApiSession && user?.role === 'officer';
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -128,10 +130,10 @@ export default function OfficerApplications() {
           <div>
             <h1 className="text-2xl font-bold text-text-primary">Application Review Queue</h1>
             <p className="text-text-secondary text-sm mt-0.5">
-              Review, verify documentation, and process startup facilitation registrations.
+              {isApiSession ? 'Review applications assigned to you. Document and clarification workflows are not connected yet.' : 'Review, verify documentation, and process startup facilitation registrations.'}
             </p>
           </div>
-          {rawList.length === 0 && (
+          {!isApiSession && rawList.length === 0 && (
             <button
               onClick={resetToMockData}
               className="btn-secondary text-xs inline-flex items-center gap-1.5 self-start"
@@ -140,6 +142,13 @@ export default function OfficerApplications() {
             </button>
           )}
         </div>
+
+        {applicationError && isApiSession && (
+          <div className="card p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3" role="alert">
+            <p className="text-sm text-error">{applicationError}</p>
+            <button onClick={() => refreshApplications().catch(() => {})} className="btn-secondary inline-flex items-center gap-2 text-sm"><RefreshCw className="w-4 h-4" /> Retry</button>
+          </div>
+        )}
 
         {/* Metric Quick-Pills */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -210,19 +219,20 @@ export default function OfficerApplications() {
               />
             </div>
 
-            {/* Scope Filter */}
-            <select
-              value={assignmentFilter}
-              onChange={e => {
-                setAssignmentFilter(e.target.value);
-                setPage(1);
-              }}
-              className="input-field w-auto text-sm"
-            >
-              <option value="all">Queue: All Applications</option>
-              <option value="assigned">Queue: Assigned to Me</option>
-              <option value="unassigned">Queue: Unassigned</option>
-            </select>
+            {!isLiveOfficer && (
+              <select
+                value={assignmentFilter}
+                onChange={e => {
+                  setAssignmentFilter(e.target.value);
+                  setPage(1);
+                }}
+                className="input-field w-auto text-sm"
+              >
+                <option value="all">Queue: All Applications</option>
+                <option value="assigned">Queue: Assigned to Me</option>
+                <option value="unassigned">Queue: Unassigned</option>
+              </select>
+            )}
 
             {/* Status Filter */}
             <select
@@ -281,7 +291,9 @@ export default function OfficerApplications() {
         </div>
 
         {/* Applications List */}
-        {paginated.length > 0 ? (
+        {applicationLoading && isApiSession ? (
+          <div role="status" className="card p-8 text-center text-sm text-text-secondary">Loading the review queue…</div>
+        ) : paginated.length > 0 ? (
           <div className="space-y-3">
             {paginated.map((app, i) => (
               <motion.div
@@ -355,11 +367,11 @@ export default function OfficerApplications() {
                 <button onClick={resetFilters} className="btn-secondary text-sm">
                   Reset All Filters
                 </button>
-              ) : (
+              ) : !isApiSession ? (
                 <button onClick={resetToMockData} className="btn-primary text-sm inline-flex items-center gap-2">
                   <RotateCcw className="w-4 h-4" /> Load Demo Applications
                 </button>
-              )
+              ) : null
             }
           />
         )}
