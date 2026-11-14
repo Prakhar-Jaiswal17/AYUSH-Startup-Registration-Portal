@@ -37,7 +37,7 @@ npm run dist:mac
 
 To create a DMG disk image instead, run `npm run dist:mac:dmg`. DMG creation requires macOS disk image support; the automated build environment used for this project could not create one, so the ZIP is the verified macOS artifact.
 
-On Windows:
+On Windows (the configured build target is x64):
 
 ```bash
 npm run dist:win
@@ -70,8 +70,8 @@ For local development, start PostgreSQL and the backend first, then open the des
 - The renderer has context isolation and sandboxing enabled, with Node integration disabled.
 - External HTTPS links open in the system browser; navigation away from the local portal is blocked inside the app.
 - The production desktop app serves the built website only on the loopback interface at port 5173, matching the backend's existing CORS allowlist.
-- The app was opened on macOS Apple Silicon and checked through the home page, sign-in page, and demo startup dashboard. Live authenticated API actions have not yet been verified.
+- The macOS Apple Silicon app was opened and checked through the home page, sign-in page, and demo startup dashboard. The Windows x64 installer was built and its architecture and embedded API URL were inspected, but it needs to be opened on a Windows computer. Live authenticated API actions have not yet been verified.
 
 ## Current integration limits
 
-Desktop screens and workflows match the current website. The desktop packaging does not add separate backend features. Any limitation in the web app or API (including document upload/verification, if not implemented there) also applies in the desktop app. The current macOS ZIP is unsigned and not notarized, and live API login still needs a full end-to-end check before distribution. Windows and Linux packages must be built on their target platforms.
+Desktop screens and workflows match the current website. The desktop packaging does not add separate backend features. Any limitation in the web app or API (including document upload/verification, if not implemented there) also applies in the desktop app. The current macOS ZIP and Windows x64 installer are unsigned; the Mac ZIP is not notarized. Live API login still needs a full end-to-end check before distribution. Linux package has not been built.
