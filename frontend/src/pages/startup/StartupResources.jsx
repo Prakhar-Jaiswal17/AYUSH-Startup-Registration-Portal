@@ -12,6 +12,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { resourceAPI, getApiErrorMessage } from '../../services/api';
 import PageTransition from '../../layouts/PageTransition';
@@ -42,6 +44,17 @@ export default function StartupResources() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [reloadTrigger, setReloadTrigger] = useState(0);
+  const [copiedId, setCopiedId] = useState(null);
+
+  const handleCopyLink = (res) => {
+    const fullUrl = res.url.startsWith('/')
+      ? `${window.location.origin}${res.url}`
+      : res.url;
+    navigator.clipboard.writeText(fullUrl).then(() => {
+      setCopiedId(res.id);
+      setTimeout(() => setCopiedId(null), 2000);
+    }).catch((err) => console.error('Failed to copy link:', err));
+  };
 
   // Debounce search
   useEffect(() => {
@@ -250,6 +263,20 @@ export default function StartupResources() {
                           {res.category}
                         </span>
                       </div>
+                      {res.url && res.url !== '#' && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopyLink(res)}
+                          className="text-text-secondary hover:text-primary transition-colors p-1 rounded-md hover:bg-gray-100"
+                          title={copiedId === res.id ? 'Copied link!' : 'Copy link'}
+                        >
+                          {copiedId === res.id ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      )}
                     </div>
                     <p className="text-sm text-text-secondary mb-4 line-clamp-3">
                       {res.description || res.summary}

@@ -13,6 +13,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { resourceAPI, getApiErrorMessage } from '../../services/api';
 import PageTransition from '../../layouts/PageTransition';
@@ -66,6 +68,17 @@ export default function ResourcesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [reloadTrigger, setReloadTrigger] = useState(0);
+  const [copiedId, setCopiedId] = useState(null);
+
+  const handleCopyLink = (res) => {
+    const fullUrl = res.url.startsWith('/')
+      ? `${window.location.origin}${res.url}`
+      : res.url;
+    navigator.clipboard.writeText(fullUrl).then(() => {
+      setCopiedId(res.id);
+      setTimeout(() => setCopiedId(null), 2000);
+    }).catch((err) => console.error('Failed to copy link:', err));
+  };
 
   // Debounce search input to avoid hitting API on every keystroke
   useEffect(() => {
@@ -302,6 +315,20 @@ export default function ResourcesPage() {
                         </span>
                         {resource.type === 'official' && (
                           <ShieldCheck className="w-4 h-4 text-blue-500" title="Official Government Portal" />
+                        )}
+                        {resource.url && resource.url !== '#' && (
+                          <button
+                            type="button"
+                            onClick={() => handleCopyLink(resource)}
+                            className="ml-auto text-text-secondary hover:text-primary transition-colors p-1 rounded-md hover:bg-gray-100"
+                            title={copiedId === resource.id ? 'Copied link to clipboard!' : 'Copy resource link'}
+                          >
+                            {copiedId === resource.id ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
                         )}
                       </div>
 
