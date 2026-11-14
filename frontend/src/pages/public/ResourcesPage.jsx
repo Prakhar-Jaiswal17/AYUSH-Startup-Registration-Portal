@@ -15,6 +15,8 @@ import {
   Clock,
   Copy,
   Check,
+  X,
+  Filter,
 } from 'lucide-react';
 import { resourceAPI, getApiErrorMessage } from '../../services/api';
 import PageTransition from '../../layouts/PageTransition';
@@ -226,7 +228,60 @@ export default function ResourcesPage() {
             </select>
           </motion.div>
 
-          {/* Category Tabs */}
+          {/* Active Filter Chips */}
+          {(selectedCategory !== 'All' || searchTerm.trim() || sortBy !== 'default') && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              className="flex flex-wrap items-center justify-center gap-2 mb-8 text-xs"
+            >
+              <span className="text-text-secondary inline-flex items-center gap-1 font-medium">
+                <Filter className="w-3.5 h-3.5" /> Active filters:
+              </span>
+              {selectedCategory !== 'All' && (
+                <span className="inline-flex items-center gap-1 bg-primary/10 text-primary px-2.5 py-1 rounded-full font-medium">
+                  Category: {selectedCategory}
+                  <button
+                    onClick={() => handleCategoryChange('All')}
+                    className="hover:text-primary/70"
+                    title="Remove category filter"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
+              {searchTerm.trim() && (
+                <span className="inline-flex items-center gap-1 bg-primary/10 text-primary px-2.5 py-1 rounded-full font-medium">
+                  Query: "{searchTerm}"
+                  <button
+                    onClick={() => { setSearchTerm(''); setDebouncedSearch(''); setPage(1); }}
+                    className="hover:text-primary/70"
+                    title="Clear search query"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
+              {sortBy !== 'default' && (
+                <span className="inline-flex items-center gap-1 bg-primary/10 text-primary px-2.5 py-1 rounded-full font-medium">
+                  Sorted: {sortBy}
+                  <button
+                    onClick={() => { setSortBy('default'); setPage(1); }}
+                    className="hover:text-primary/70"
+                    title="Reset sort"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
+              <button
+                onClick={handleClearFilters}
+                className="text-text-secondary hover:text-red-600 underline font-medium ml-1"
+              >
+                Reset all
+              </button>
+            </motion.div>
+          )}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
