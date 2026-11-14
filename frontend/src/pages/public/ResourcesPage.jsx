@@ -54,6 +54,7 @@ export default function ResourcesPage() {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [sortBy, setSortBy] = useState('default');
   const [page, setPage] = useState(1);
   const [resources, setResources] = useState([]);
   const [pagination, setPagination] = useState({
@@ -90,6 +91,16 @@ export default function ResourcesPage() {
     }
     if (debouncedSearch.trim()) {
       params.search = debouncedSearch.trim();
+    }
+    if (sortBy === 'title-asc') {
+      params.sortBy = 'title';
+      params.order = 'asc';
+    } else if (sortBy === 'title-desc') {
+      params.sortBy = 'title';
+      params.order = 'desc';
+    } else if (sortBy === 'category') {
+      params.sortBy = 'category';
+      params.order = 'asc';
     }
 
     resourceAPI
@@ -139,6 +150,7 @@ export default function ResourcesPage() {
     setSearchTerm('');
     setDebouncedSearch('');
     setSelectedCategory('All');
+    setSortBy('default');
     setPage(1);
   };
 
@@ -169,21 +181,36 @@ export default function ResourcesPage() {
       {/* Filters & Search */}
       <section className="py-10 px-4 bg-background">
         <div className="max-w-6xl mx-auto">
-          {/* Search */}
+          {/* Search & Sort */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.1 }}
-            className="relative max-w-md mx-auto mb-8"
+            className="flex flex-col sm:flex-row items-center justify-center gap-3 max-w-xl mx-auto mb-8"
           >
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary" />
-            <input
-              type="text"
-              placeholder="Search resources…"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="input-field pl-11 w-full"
-            />
+            <div className="relative flex-1 w-full">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary" />
+              <input
+                type="text"
+                placeholder="Search resources…"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="input-field pl-11 w-full"
+              />
+            </div>
+            <select
+              value={sortBy}
+              onChange={(e) => {
+                setSortBy(e.target.value);
+                setPage(1);
+              }}
+              className="input-field w-full sm:w-auto text-sm py-2 px-3 text-text-secondary bg-white border border-border rounded-xl"
+            >
+              <option value="default">Default Order</option>
+              <option value="title-asc">Title (A → Z)</option>
+              <option value="title-desc">Title (Z → A)</option>
+              <option value="category">Category</option>
+            </select>
           </motion.div>
 
           {/* Category Tabs */}
