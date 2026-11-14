@@ -168,7 +168,29 @@ async function runTests() {
     assert.strictEqual(res011Item.isAvailable, false);
     console.log('  ✓ All 11 resources verified: zero "#" placeholders, verified URLs, unavailable items labeled');
 
-    console.log('\n🎉 ALL 11 TESTS PASSED SUCCESSFULLY!\n');
+    // Test 12: Sorting by title asc and desc
+    console.log('Test 12: Sorting by title (asc & desc)');
+    const res12Asc = await request('/api/resources?limit=50&sortBy=title&order=asc');
+    assert.strictEqual(res12Asc.status, 200);
+    const titlesAsc = res12Asc.body.data.items.map((i) => i.title);
+    const sortedTitlesAsc = [...titlesAsc].sort((a, b) => a.localeCompare(b));
+    assert.deepStrictEqual(titlesAsc, sortedTitlesAsc);
+
+    const res12Desc = await request('/api/resources?limit=50&sortBy=title&order=desc');
+    assert.strictEqual(res12Desc.status, 200);
+    const titlesDesc = res12Desc.body.data.items.map((i) => i.title);
+    const sortedTitlesDesc = [...titlesDesc].sort((a, b) => b.localeCompare(a));
+    assert.deepStrictEqual(titlesDesc, sortedTitlesDesc);
+    console.log('  ✓ Sorting by title in both asc and desc order functions correctly');
+
+    // Test 13: Invalid sortBy rejection
+    console.log('Test 13: Invalid sortBy parameter');
+    const res13 = await request('/api/resources?sortBy=unknownField');
+    assert.strictEqual(res13.status, 400);
+    assert.strictEqual(res13.body.success, false);
+    console.log('  ✓ 400 returned when sortBy is invalid');
+
+    console.log('\n🎉 ALL 13 TESTS PASSED SUCCESSFULLY!\n');
   } finally {
     server.close();
   }

@@ -12,12 +12,18 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Copy,
+  Check,
+  Bookmark,
+  BookmarkCheck,
 } from 'lucide-react';
 import { resourceAPI, getApiErrorMessage } from '../../services/api';
 import PageTransition from '../../layouts/PageTransition';
+import HighlightText from '../../components/common/HighlightText';
 
 const categories = [
   'All',
+  'Bookmarked',
   'Government Portal',
   'Startup Support',
   'Research',
@@ -30,6 +36,7 @@ export default function StartupResources() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [category, setCategory] = useState('All');
+  const [sortBy, setSortBy] = useState('default');
   const [page, setPage] = useState(1);
   const [resources, setResources] = useState([]);
   const [pagination, setPagination] = useState({
@@ -41,6 +48,35 @@ export default function StartupResources() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [reloadTrigger, setReloadTrigger] = useState(0);
+  const [copiedId, setCopiedId] = useState(null);
+  const [bookmarks, setBookmarks] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ayush_bookmarked_resources');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const toggleBookmark = (id) => {
+    setBookmarks((prev) => {
+      const next = prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id];
+      try {
+        localStorage.setItem('ayush_bookmarked_resources', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const handleCopyLink = (res) => {
+    const fullUrl = res.url.startsWith('/')
+      ? `${window.location.origin}${res.url}`
+      : res.url;
+    navigator.clipboard.writeText(fullUrl).then(() => {
+      setCopiedId(res.id);
+      setTimeout(() => setCopiedId(null), 2000);
+    }).catch((err) => console.error('Failed to copy link:', err));
+  };
 
   // Debounce search
   useEffect(() => {
@@ -58,14 +94,24 @@ export default function StartupResources() {
     setError(null);
 
     const params = {
-      page,
-      limit: 9,
+      page: category === 'Bookmarked' ? 1 : page,
+      limit: category === 'Bookmarked' ? 50 : 9,
     };
-    if (category !== 'All') {
+    if (category !== 'All' && category !== 'Bookmarked') {
       params.category = category;
     }
     if (debouncedSearch.trim()) {
       params.search = debouncedSearch.trim();
+    }
+    if (sortBy === 'title-asc') {
+      params.sortBy = 'title';
+      params.order = 'asc';
+    } else if (sortBy === 'title-desc') {
+      params.sortBy = 'title';
+      params.order = 'desc';
+    } else if (sortBy === 'category') {
+      params.sortBy = 'category';
+      params.order = 'asc';
     }
 
     resourceAPI
@@ -74,14 +120,19 @@ export default function StartupResources() {
         if (isCancelled) return;
         const resData = response?.data?.data;
         if (resData && Array.isArray(resData.items)) {
-          setResources(resData.items);
+          const finalItems = category === 'Bookmarked'
+            ? resData.items.filter((item) => bookmarks.includes(item.id))
+            : resData.items;
+          setResources(finalItems);
           setPagination(
-            resData.pagination || {
-              page,
-              limit: 9,
-              total: resData.items.length,
-              totalPages: 1,
-            }
+            category === 'Bookmarked'
+              ? { page: 1, limit: 50, total: finalItems.length, totalPages: 1 }
+              : (resData.pagination || {
+                  page,
+                  limit: 9,
+                  total: resData.items.length,
+                  totalPages: 1,
+                })
           );
         } else {
           setResources([]);
@@ -115,6 +166,7 @@ export default function StartupResources() {
     setSearch('');
     setDebouncedSearch('');
     setCategory('All');
+    setSortBy('default');
     setPage(1);
   };
 
@@ -134,12 +186,27 @@ export default function StartupResources() {
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
             <input
               type="text"
+              aria-label="Search resources"
               placeholder="Search resources..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="input-field pl-10"
             />
           </div>
+          <select
+            aria-label="Sort resources"
+            value={sortBy}
+            onChange={(e) => {
+              setSortBy(e.target.value);
+              setPage(1);
+            }}
+            className="input-field w-auto text-xs py-1.5 px-3 text-text-secondary bg-white border border-border rounded-lg"
+          >
+            <option value="default">Default Order</option>
+            <option value="title-asc">Title (A → Z)</option>
+            <option value="title-desc">Title (Z → A)</option>
+            <option value="category">Category</option>
+          </select>
           <div className="flex gap-2 overflow-x-auto pb-1">
             {categories.map((c) => (
               <button
@@ -219,11 +286,39 @@ export default function StartupResources() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="font-medium text-sm text-text-primary leading-snug">
-                          {res.title}
+                          <HighlightText text={res.title} query={debouncedSearch} />
                         </p>
                         <span className="text-xs px-1.5 py-0.5 bg-primary/5 text-primary rounded mt-1 inline-block">
                           {res.category}
                         </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => toggleBookmark(res.id)}
+                          className="text-text-secondary hover:text-amber-500 transition-colors p-1 rounded-md hover:bg-gray-100"
+                          title={bookmarks.includes(res.id) ? 'Remove from bookmarks' : 'Add to bookmarks'}
+                        >
+                          {bookmarks.includes(res.id) ? (
+                            <BookmarkCheck className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                          ) : (
+                            <Bookmark className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                        {res.url && res.url !== '#' && (
+                          <button
+                            type="button"
+                            onClick={() => handleCopyLink(res)}
+                            className="text-text-secondary hover:text-primary transition-colors p-1 rounded-md hover:bg-gray-100"
+                            title={copiedId === res.id ? 'Copied link!' : 'Copy link'}
+                          >
+                            {copiedId === res.id ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        )}
                       </div>
                     </div>
                     <p className="text-sm text-text-secondary mb-4 line-clamp-3">
@@ -261,7 +356,10 @@ export default function StartupResources() {
 
             {/* Pagination Controls */}
             {pagination.totalPages > 1 && (
-              <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border pt-4">
+              <nav
+                aria-label="Startup resources pagination"
+                className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border pt-4"
+              >
                 <p className="text-xs text-text-secondary">
                   Showing {(pagination.page - 1) * pagination.limit + 1} to{' '}
                   {Math.min(pagination.page * pagination.limit, pagination.total)} of{' '}
@@ -270,6 +368,8 @@ export default function StartupResources() {
 
                 <div className="flex items-center gap-2">
                   <button
+                    type="button"
+                    aria-label="Previous page"
                     onClick={() => setPage((p) => Math.max(p - 1, 1))}
                     disabled={pagination.page <= 1}
                     className="btn-outline px-2.5 py-1 text-xs inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
@@ -281,6 +381,9 @@ export default function StartupResources() {
                     {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((pageNum) => (
                       <button
                         key={pageNum}
+                        type="button"
+                        aria-label={`Page ${pageNum}`}
+                        aria-current={pagination.page === pageNum ? 'page' : undefined}
                         onClick={() => setPage(pageNum)}
                         className={`w-7 h-7 rounded text-xs font-medium transition-colors ${
                           pagination.page === pageNum
@@ -294,6 +397,8 @@ export default function StartupResources() {
                   </div>
 
                   <button
+                    type="button"
+                    aria-label="Next page"
                     onClick={() => setPage((p) => Math.min(p + 1, pagination.totalPages))}
                     disabled={pagination.page >= pagination.totalPages}
                     className="btn-outline px-2.5 py-1 text-xs inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
@@ -301,7 +406,7 @@ export default function StartupResources() {
                     Next <ChevronRight className="w-3 h-3" />
                   </button>
                 </div>
-              </div>
+              </nav>
             )}
           </>
         )}

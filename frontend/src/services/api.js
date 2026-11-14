@@ -153,9 +153,23 @@ export const notificationAPI = {
   markAllRead: () => api.patch('/notifications/read-all'),
 };
 
+const resourceCache = new Map();
+const RESOURCE_CACHE_TTL_MS = 60 * 1000;
+
 export const resourceAPI = {
-  getAll: (params) => api.get('/resources', { params }),
+  getAll: (params) => {
+    const cacheKey = JSON.stringify(params || {});
+    const cached = resourceCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < RESOURCE_CACHE_TTL_MS) {
+      return Promise.resolve(cached.data);
+    }
+    return api.get('/resources', { params }).then((response) => {
+      resourceCache.set(cacheKey, { timestamp: Date.now(), data: response });
+      return response;
+    });
+  },
   getById: (id) => api.get(`/resources/${id}`),
+  clearCache: () => resourceCache.clear(),
 };
 
 export const categoryAPI = {

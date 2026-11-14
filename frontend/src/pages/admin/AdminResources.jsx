@@ -1,7 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Plus, ExternalLink, BookOpen, Trash2, Edit2 } from 'lucide-react';
+import { Search, Plus, ExternalLink, BookOpen, Trash2, Edit2, Download } from 'lucide-react';
 import { mockResources } from '../../data/mockData';
+import { resourceAPI } from '../../services/api';
+import { exportResourcesToCSV, exportResourcesToJSON } from '../../utils/resourceExporter';
 import Modal from '../../components/common/Modal';
 import PageTransition from '../../layouts/PageTransition';
 
@@ -12,6 +14,17 @@ export default function AdminResources() {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
+
+  useEffect(() => {
+    resourceAPI.getAll({ limit: 50 }).then((res) => {
+      const items = res?.data?.data?.items;
+      if (Array.isArray(items) && items.length > 0) {
+        setResources(items);
+      }
+    }).catch(() => {
+      // Fallback stays as mockResources
+    });
+  }, []);
   const [newResource, setNewResource] = useState({
     title: '',
     description: '',
@@ -60,9 +73,25 @@ export default function AdminResources() {
             <h1 className="text-2xl font-bold text-text-primary">Resource Management</h1>
             <p className="text-text-secondary text-sm mt-1">Configure guidance materials, official government links, and knowledge base resources.</p>
           </div>
-          <button onClick={() => setShowAddModal(true)} className="btn-primary inline-flex items-center gap-2 self-start">
-            <Plus className="w-4 h-4" /> Add Resource
-          </button>
+          <div className="flex items-center gap-2 self-start flex-wrap">
+            <button
+              onClick={() => exportResourcesToCSV(resources)}
+              className="btn-outline text-xs inline-flex items-center gap-1.5"
+              title="Download resources list as CSV"
+            >
+              <Download className="w-3.5 h-3.5" /> Export CSV
+            </button>
+            <button
+              onClick={() => exportResourcesToJSON(resources)}
+              className="btn-outline text-xs inline-flex items-center gap-1.5"
+              title="Download resources list as JSON"
+            >
+              <Download className="w-3.5 h-3.5" /> Export JSON
+            </button>
+            <button onClick={() => setShowAddModal(true)} className="btn-primary text-xs inline-flex items-center gap-2">
+              <Plus className="w-4 h-4" /> Add Resource
+            </button>
+          </div>
         </div>
 
         {/* Filter Bar */}

@@ -13,9 +13,14 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Copy,
+  Check,
+  X,
+  Filter,
 } from 'lucide-react';
 import { resourceAPI, getApiErrorMessage } from '../../services/api';
 import PageTransition from '../../layouts/PageTransition';
+import HighlightText from '../../components/common/HighlightText';
 
 const categories = [
   'All',
@@ -54,6 +59,7 @@ export default function ResourcesPage() {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [sortBy, setSortBy] = useState('default');
   const [page, setPage] = useState(1);
   const [resources, setResources] = useState([]);
   const [pagination, setPagination] = useState({
@@ -65,6 +71,17 @@ export default function ResourcesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [reloadTrigger, setReloadTrigger] = useState(0);
+  const [copiedId, setCopiedId] = useState(null);
+
+  const handleCopyLink = (res) => {
+    const fullUrl = res.url.startsWith('/')
+      ? `${window.location.origin}${res.url}`
+      : res.url;
+    navigator.clipboard.writeText(fullUrl).then(() => {
+      setCopiedId(res.id);
+      setTimeout(() => setCopiedId(null), 2000);
+    }).catch((err) => console.error('Failed to copy link:', err));
+  };
 
   // Debounce search input to avoid hitting API on every keystroke
   useEffect(() => {
@@ -90,6 +107,16 @@ export default function ResourcesPage() {
     }
     if (debouncedSearch.trim()) {
       params.search = debouncedSearch.trim();
+    }
+    if (sortBy === 'title-asc') {
+      params.sortBy = 'title';
+      params.order = 'asc';
+    } else if (sortBy === 'title-desc') {
+      params.sortBy = 'title';
+      params.order = 'desc';
+    } else if (sortBy === 'category') {
+      params.sortBy = 'category';
+      params.order = 'asc';
     }
 
     resourceAPI
@@ -139,6 +166,7 @@ export default function ResourcesPage() {
     setSearchTerm('');
     setDebouncedSearch('');
     setSelectedCategory('All');
+    setSortBy('default');
     setPage(1);
   };
 
@@ -169,24 +197,94 @@ export default function ResourcesPage() {
       {/* Filters & Search */}
       <section className="py-10 px-4 bg-background">
         <div className="max-w-6xl mx-auto">
-          {/* Search */}
+          {/* Search & Sort */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.1 }}
-            className="relative max-w-md mx-auto mb-8"
+            className="flex flex-col sm:flex-row items-center justify-center gap-3 max-w-xl mx-auto mb-8"
           >
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary" />
-            <input
-              type="text"
-              placeholder="Search resources…"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="input-field pl-11 w-full"
-            />
+            <div className="relative flex-1 w-full">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary" />
+              <input
+                type="text"
+                aria-label="Search AYUSH resources"
+                placeholder="Search resources…"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="input-field pl-11 w-full"
+              />
+            </div>
+            <select
+              aria-label="Sort resources order"
+              value={sortBy}
+              onChange={(e) => {
+                setSortBy(e.target.value);
+                setPage(1);
+              }}
+              className="input-field w-full sm:w-auto text-sm py-2 px-3 text-text-secondary bg-white border border-border rounded-xl"
+            >
+              <option value="default">Default Order</option>
+              <option value="title-asc">Title (A → Z)</option>
+              <option value="title-desc">Title (Z → A)</option>
+              <option value="category">Category</option>
+            </select>
           </motion.div>
 
-          {/* Category Tabs */}
+          {/* Active Filter Chips */}
+          {(selectedCategory !== 'All' || searchTerm.trim() || sortBy !== 'default') && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              className="flex flex-wrap items-center justify-center gap-2 mb-8 text-xs"
+            >
+              <span className="text-text-secondary inline-flex items-center gap-1 font-medium">
+                <Filter className="w-3.5 h-3.5" /> Active filters:
+              </span>
+              {selectedCategory !== 'All' && (
+                <span className="inline-flex items-center gap-1 bg-primary/10 text-primary px-2.5 py-1 rounded-full font-medium">
+                  Category: {selectedCategory}
+                  <button
+                    onClick={() => handleCategoryChange('All')}
+                    className="hover:text-primary/70"
+                    title="Remove category filter"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
+              {searchTerm.trim() && (
+                <span className="inline-flex items-center gap-1 bg-primary/10 text-primary px-2.5 py-1 rounded-full font-medium">
+                  Query: "{searchTerm}"
+                  <button
+                    onClick={() => { setSearchTerm(''); setDebouncedSearch(''); setPage(1); }}
+                    className="hover:text-primary/70"
+                    title="Clear search query"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
+              {sortBy !== 'default' && (
+                <span className="inline-flex items-center gap-1 bg-primary/10 text-primary px-2.5 py-1 rounded-full font-medium">
+                  Sorted: {sortBy}
+                  <button
+                    onClick={() => { setSortBy('default'); setPage(1); }}
+                    className="hover:text-primary/70"
+                    title="Reset sort"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
+              <button
+                onClick={handleClearFilters}
+                className="text-text-secondary hover:text-red-600 underline font-medium ml-1"
+              >
+                Reset all
+              </button>
+            </motion.div>
+          )}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -276,14 +374,28 @@ export default function ResourcesPage() {
                         {resource.type === 'official' && (
                           <ShieldCheck className="w-4 h-4 text-blue-500" title="Official Government Portal" />
                         )}
+                        {resource.url && resource.url !== '#' && (
+                          <button
+                            type="button"
+                            onClick={() => handleCopyLink(resource)}
+                            className="ml-auto text-text-secondary hover:text-primary transition-colors p-1 rounded-md hover:bg-gray-100"
+                            title={copiedId === resource.id ? 'Copied link to clipboard!' : 'Copy resource link'}
+                          >
+                            {copiedId === resource.id ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        )}
                       </div>
 
                       <h3 className="text-lg font-semibold text-text-primary mb-2 leading-snug">
-                        {resource.title}
+                        <HighlightText text={resource.title} query={debouncedSearch} />
                       </h3>
 
                       <p className="text-text-secondary text-sm leading-relaxed flex-1 mb-5">
-                        {resource.description || resource.summary}
+                        <HighlightText text={resource.description || resource.summary} query={debouncedSearch} />
                       </p>
 
                       <div className="pt-4 border-t border-border-light mt-auto">
@@ -318,7 +430,10 @@ export default function ResourcesPage() {
 
               {/* Pagination Controls */}
               {pagination.totalPages > 1 && (
-                <div className="mt-12 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border pt-6">
+                <nav
+                  aria-label="Resources pagination"
+                  className="mt-12 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border pt-6"
+                >
                   <p className="text-sm text-text-secondary">
                     Showing <span className="font-medium text-text-primary">{(pagination.page - 1) * pagination.limit + 1}</span> to{' '}
                     <span className="font-medium text-text-primary">
@@ -329,6 +444,8 @@ export default function ResourcesPage() {
 
                   <div className="flex items-center gap-2">
                     <button
+                      type="button"
+                      aria-label="Previous page"
                       onClick={() => setPage((p) => Math.max(p - 1, 1))}
                       disabled={pagination.page <= 1}
                       className="btn-outline px-3 py-1.5 text-sm inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
@@ -340,6 +457,9 @@ export default function ResourcesPage() {
                       {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((pageNum) => (
                         <button
                           key={pageNum}
+                          type="button"
+                          aria-label={`Page ${pageNum}`}
+                          aria-current={pagination.page === pageNum ? 'page' : undefined}
                           onClick={() => setPage(pageNum)}
                           className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
                             pagination.page === pageNum
@@ -353,6 +473,8 @@ export default function ResourcesPage() {
                     </div>
 
                     <button
+                      type="button"
+                      aria-label="Next page"
                       onClick={() => setPage((p) => Math.min(p + 1, pagination.totalPages))}
                       disabled={pagination.page >= pagination.totalPages}
                       className="btn-outline px-3 py-1.5 text-sm inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
@@ -360,7 +482,7 @@ export default function ResourcesPage() {
                       Next <ChevronRight className="w-4 h-4" />
                     </button>
                   </div>
-                </div>
+                </nav>
               )}
             </>
           )}
