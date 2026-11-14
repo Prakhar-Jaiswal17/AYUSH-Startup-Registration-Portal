@@ -6,7 +6,7 @@ const AUTH_STORAGE_KEY = 'ayush_setu_auth';
 
 const api = axios.create({
   baseURL: configuredBaseURL.replace(/\/+$/, ''),
-  timeout: 15000,
+  timeout: 75000,
   headers: {
     'Content-Type': 'application/json',
   },
