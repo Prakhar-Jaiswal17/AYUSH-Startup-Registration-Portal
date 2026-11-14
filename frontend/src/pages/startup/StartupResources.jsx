@@ -14,12 +14,15 @@ import {
   Clock,
   Copy,
   Check,
+  Bookmark,
+  BookmarkCheck,
 } from 'lucide-react';
 import { resourceAPI, getApiErrorMessage } from '../../services/api';
 import PageTransition from '../../layouts/PageTransition';
 
 const categories = [
   'All',
+  'Bookmarked',
   'Government Portal',
   'Startup Support',
   'Research',
@@ -45,6 +48,24 @@ export default function StartupResources() {
   const [error, setError] = useState(null);
   const [reloadTrigger, setReloadTrigger] = useState(0);
   const [copiedId, setCopiedId] = useState(null);
+  const [bookmarks, setBookmarks] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ayush_bookmarked_resources');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const toggleBookmark = (id) => {
+    setBookmarks((prev) => {
+      const next = prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id];
+      try {
+        localStorage.setItem('ayush_bookmarked_resources', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
 
   const handleCopyLink = (res) => {
     const fullUrl = res.url.startsWith('/')
@@ -72,10 +93,10 @@ export default function StartupResources() {
     setError(null);
 
     const params = {
-      page,
-      limit: 9,
+      page: category === 'Bookmarked' ? 1 : page,
+      limit: category === 'Bookmarked' ? 50 : 9,
     };
-    if (category !== 'All') {
+    if (category !== 'All' && category !== 'Bookmarked') {
       params.category = category;
     }
     if (debouncedSearch.trim()) {
@@ -98,14 +119,19 @@ export default function StartupResources() {
         if (isCancelled) return;
         const resData = response?.data?.data;
         if (resData && Array.isArray(resData.items)) {
-          setResources(resData.items);
+          const finalItems = category === 'Bookmarked'
+            ? resData.items.filter((item) => bookmarks.includes(item.id))
+            : resData.items;
+          setResources(finalItems);
           setPagination(
-            resData.pagination || {
-              page,
-              limit: 9,
-              total: resData.items.length,
-              totalPages: 1,
-            }
+            category === 'Bookmarked'
+              ? { page: 1, limit: 50, total: finalItems.length, totalPages: 1 }
+              : (resData.pagination || {
+                  page,
+                  limit: 9,
+                  total: resData.items.length,
+                  totalPages: 1,
+                })
           );
         } else {
           setResources([]);
@@ -263,20 +289,34 @@ export default function StartupResources() {
                           {res.category}
                         </span>
                       </div>
-                      {res.url && res.url !== '#' && (
+                      <div className="flex items-center gap-1">
                         <button
                           type="button"
-                          onClick={() => handleCopyLink(res)}
-                          className="text-text-secondary hover:text-primary transition-colors p-1 rounded-md hover:bg-gray-100"
-                          title={copiedId === res.id ? 'Copied link!' : 'Copy link'}
+                          onClick={() => toggleBookmark(res.id)}
+                          className="text-text-secondary hover:text-amber-500 transition-colors p-1 rounded-md hover:bg-gray-100"
+                          title={bookmarks.includes(res.id) ? 'Remove from bookmarks' : 'Add to bookmarks'}
                         >
-                          {copiedId === res.id ? (
-                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          {bookmarks.includes(res.id) ? (
+                            <BookmarkCheck className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
                           ) : (
-                            <Copy className="w-3.5 h-3.5" />
+                            <Bookmark className="w-3.5 h-3.5" />
                           )}
                         </button>
-                      )}
+                        {res.url && res.url !== '#' && (
+                          <button
+                            type="button"
+                            onClick={() => handleCopyLink(res)}
+                            className="text-text-secondary hover:text-primary transition-colors p-1 rounded-md hover:bg-gray-100"
+                            title={copiedId === res.id ? 'Copied link!' : 'Copy link'}
+                          >
+                            {copiedId === res.id ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <p className="text-sm text-text-secondary mb-4 line-clamp-3">
                       {res.description || res.summary}
