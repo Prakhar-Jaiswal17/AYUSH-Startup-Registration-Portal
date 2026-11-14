@@ -1019,6 +1019,8 @@ Resources are publicly accessible guides, portals, and regulatory links (read-on
 **Query params:**
 - `category` (optional): Filter by category name (e.g., `Government Portal`, `Startup Support`, `Research`, `Regulatory`, `Guide`, `Government Scheme`). Case-insensitive; passing `All` or omitting returns all categories.
 - `search` (optional): Case-insensitive search query matching against resource `title`, `category`, `summary`, and `description`.
+- `sortBy` (optional): Sort field (`title` or `category`).
+- `order` (optional): Sort direction (`asc` or `desc`, default `asc`).
 - `page` (optional): Positive integer, default `1`.
 - `limit` (optional): Positive integer between `1` and `50`, default `10`.
 

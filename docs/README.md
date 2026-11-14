@@ -13,6 +13,7 @@ The repository has PostgreSQL/Prisma persistence foundations, core auth/startup/
 | [team-roles.md](./team-roles.md) | Current assignments, completed work, and items needing an owner |
 | [implementation-status.md](./implementation-status.md) | Repository snapshot, verified behavior, and remaining integration gaps |
 | [api-contract.md](./api-contract.md) | Draft HTTP contract; confirm with route owners before relying on it as final |
+| [resources-guide.md](./resources-guide.md) | Directory of official AYUSH portals, regulatory bodies, and resource APIs |
 | [../desk_App/README.md](../desk_App/README.md) | Electron development launcher setup and limitations |
 
 ## Requirements and architecture
