@@ -8,7 +8,7 @@ AYUSH Setu Desktop is the Electron desktop edition of the existing React portal.
 - Install frontend dependencies once from `../frontend` with `npm install`
 - For real registration, sign-in, and saved records: start the PostgreSQL database and Express backend as described in the root README and backend documentation
 
-The packaged desktop app includes the built React website, but does not bundle PostgreSQL or the Express backend. It can open the site without the backend, but live data features require the backend to be running at the API address configured when the website is built. Demo flows use the same browser-based demo data as the website. The portal is an application and review workflow; it does not issue statutory AYUSH licences or approvals.
+The packaged desktop app includes the built React website, but does not bundle PostgreSQL or the Express backend. Live data features require the backend to be running at the API address configured when the website is built. Demo flows use the same browser-based demo data as the website. The portal is an application and review workflow; it does not issue statutory AYUSH licences or approvals.
 
 ## Run the desktop app during development
 
@@ -51,7 +51,18 @@ npm run dist:linux
 
 Installers and archives are written to `desk_App/release/`. The website build is generated in the ignored `desk_App/web-dist/` folder and copied into the desktop package. `npm run pack` creates an unpacked test build. `npm run dist` builds a package for the current operating system.
 
-For a demo with working live data, start PostgreSQL and the backend first, then open the desktop application. Ensure the backend CORS configuration allows `http://127.0.0.1:5173` and that the frontend build points to the correct API URL. Do not put database passwords, signing keys, or other secrets in the frontend environment: frontend build variables are included in the app and visible to users.
+## Select the API address for a packaged build
+
+The desktop package embeds the React build, including its API address. The default is `http://localhost:3005/api`, which is suitable only when the backend is running on the same computer. Arnav provided the deployed API address `https://ayush-startup-registration-portal.onrender.com/api`. To rebuild a desktop release with that API, set `VITE_API_URL` before running the packaging command. For example, in the terminal used to package the app:
+
+```bash
+export VITE_API_URL=https://ayush-startup-registration-portal.onrender.com/api
+npm run dist:mac
+```
+
+Use the platform's matching package command on Windows or Linux. Do not put `DATABASE_URL`, `JWT_SECRET`, or other server secrets in `VITE_API_URL` or any frontend build setting: values included in the desktop app can be inspected by its users. The deployed API must allow the desktop app's loopback origin `http://127.0.0.1:5173` through CORS.
+
+For local development, start PostgreSQL and the backend first, then open the desktop app with `npm start`. Ensure the API is available at the configured URL. Arnav's website deployment and the desktop package are separate; Cloudflare Pages does not publish the Electron installer.
 
 ## Desktop behavior and security
 
@@ -59,8 +70,8 @@ For a demo with working live data, start PostgreSQL and the backend first, then 
 - The renderer has context isolation and sandboxing enabled, with Node integration disabled.
 - External HTTPS links open in the system browser; navigation away from the local portal is blocked inside the app.
 - The production desktop app serves the built website only on the loopback interface at port 5173, matching the backend's existing CORS allowlist.
-- Existing `index.html`, `renderer.js`, and `styles.css` files are an earlier standalone mockup. The current Electron launcher does not load them; the packaged app uses the React site instead.
+- The app was opened on macOS Apple Silicon and checked through the home page, sign-in page, and demo startup dashboard. Live authenticated API actions have not yet been verified.
 
 ## Current integration limits
 
-Desktop screens and workflows match the current website. The desktop packaging does not add separate backend features. Any limitation in the web app or API (including document upload/verification, if not implemented there) also applies in the desktop app. Validate startup, officer, and admin flows against the team's running database before presenting or distributing the app.
+Desktop screens and workflows match the current website. The desktop packaging does not add separate backend features. Any limitation in the web app or API (including document upload/verification, if not implemented there) also applies in the desktop app. The current macOS ZIP is unsigned and not notarized, and live API login still needs a full end-to-end check before distribution. Windows and Linux packages must be built on their target platforms.
