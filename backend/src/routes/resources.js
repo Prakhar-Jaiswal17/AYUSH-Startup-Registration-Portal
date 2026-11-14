@@ -138,7 +138,7 @@ function parsePositiveInteger(value, fallback) {
 router.get('/', (req, res) => {
     const page = parsePositiveInteger(req.query.page, 1)
     const limit = parsePositiveInteger(req.query.limit, 10)
-    const { category, search } = req.query
+    const { category, search, sortBy, order } = req.query
 
     if (page === null || limit === null || limit > 50) {
         return res.status(400).json({
@@ -155,6 +155,13 @@ router.get('/', (req, res) => {
         })
     }
 
+    if (sortBy !== undefined && !['title', 'category'].includes(sortBy.toLowerCase())) {
+        return res.status(400).json({
+            success: false,
+            error: 'sortBy must be either "title" or "category".',
+        })
+    }
+
     const normalizedCategory = category?.trim().toLocaleLowerCase()
     const normalizedSearch = search?.trim().toLocaleLowerCase()
 
@@ -168,13 +175,23 @@ router.get('/', (req, res) => {
         return matchesCategory && matchesSearch
     })
 
-    const total = filteredResources.length
+    let sortedResources = [...filteredResources]
+    if (sortBy) {
+        const field = sortBy.toLowerCase()
+        const isDesc = order?.toLowerCase() === 'desc'
+        sortedResources.sort((a, b) => {
+            const comparison = a[field].localeCompare(b[field])
+            return isDesc ? -comparison : comparison
+        })
+    }
+
+    const total = sortedResources.length
     const startIndex = (page - 1) * limit
 
     return res.json({
         success: true,
         data: {
-            items: filteredResources.slice(startIndex, startIndex + limit),
+            items: sortedResources.slice(startIndex, startIndex + limit),
             pagination: {
                 page,
                 limit,
