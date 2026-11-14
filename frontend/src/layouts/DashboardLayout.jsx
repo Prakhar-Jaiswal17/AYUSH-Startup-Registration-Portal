@@ -5,7 +5,6 @@ import {
   Leaf,
   Menu,
   X,
-  Search,
   Bell,
   ChevronDown,
   LogOut,
@@ -93,7 +92,6 @@ const dropdownVariants = {
 export default function DashboardLayout({ role = 'startup' }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -131,13 +129,6 @@ export default function DashboardLayout({ role = 'startup' }) {
     setUserMenuOpen(false);
     logout();
     navigate('/login');
-  };
-
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      setSearchQuery('');
-    }
   };
 
   const userDisplayName = user?.name || user?.email || 'User';
@@ -279,22 +270,6 @@ export default function DashboardLayout({ role = 'startup' }) {
               <span className="inline-block w-2 h-2 rounded-full bg-[#145A43]" />
               <span className="capitalize">{role} Portal</span>
             </div>
-          </div>
-
-          {/* Centrally Aligned Search Box */}
-          <div className="hidden sm:flex flex-1 max-w-md mx-6 justify-center">
-            <form onSubmit={handleSearchSubmit} className="w-full">
-              <div className="relative w-full">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#6B756F]" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search applications, startups, documents..."
-                  className="w-full h-9 rounded-full border border-gray-200 bg-[#F7F9F6] pl-9 pr-4 text-sm text-[#202A25] placeholder:text-[#6B756F] focus:outline-none focus:ring-2 focus:ring-[#145A43]/20 focus:border-[#145A43] focus:bg-white transition-all duration-200"
-                />
-              </div>
-            </form>
           </div>
 
           {/* Top-Right Corner Actions */}

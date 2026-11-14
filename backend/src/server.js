@@ -38,6 +38,6 @@ app.get('/api/health', (req, res) => {
 app.use((req, res, next) => next(httpError(404, 'API endpoint not found.')))
 app.use((error, req, res, next) => sendError(res, error))
 
-app.listen(port, () => {
+app.listen(port, '0.0.0.0', () => {
     console.log(`Server started on port ${port}`)
 })
