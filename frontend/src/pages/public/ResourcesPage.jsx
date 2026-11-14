@@ -208,6 +208,7 @@ export default function ResourcesPage() {
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary" />
               <input
                 type="text"
+                aria-label="Search AYUSH resources"
                 placeholder="Search resources…"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -215,6 +216,7 @@ export default function ResourcesPage() {
               />
             </div>
             <select
+              aria-label="Sort resources order"
               value={sortBy}
               onChange={(e) => {
                 setSortBy(e.target.value);
@@ -428,7 +430,10 @@ export default function ResourcesPage() {
 
               {/* Pagination Controls */}
               {pagination.totalPages > 1 && (
-                <div className="mt-12 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border pt-6">
+                <nav
+                  aria-label="Resources pagination"
+                  className="mt-12 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border pt-6"
+                >
                   <p className="text-sm text-text-secondary">
                     Showing <span className="font-medium text-text-primary">{(pagination.page - 1) * pagination.limit + 1}</span> to{' '}
                     <span className="font-medium text-text-primary">
@@ -439,6 +444,8 @@ export default function ResourcesPage() {
 
                   <div className="flex items-center gap-2">
                     <button
+                      type="button"
+                      aria-label="Previous page"
                       onClick={() => setPage((p) => Math.max(p - 1, 1))}
                       disabled={pagination.page <= 1}
                       className="btn-outline px-3 py-1.5 text-sm inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
@@ -450,6 +457,9 @@ export default function ResourcesPage() {
                       {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((pageNum) => (
                         <button
                           key={pageNum}
+                          type="button"
+                          aria-label={`Page ${pageNum}`}
+                          aria-current={pagination.page === pageNum ? 'page' : undefined}
                           onClick={() => setPage(pageNum)}
                           className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
                             pagination.page === pageNum
@@ -463,6 +473,8 @@ export default function ResourcesPage() {
                     </div>
 
                     <button
+                      type="button"
+                      aria-label="Next page"
                       onClick={() => setPage((p) => Math.min(p + 1, pagination.totalPages))}
                       disabled={pagination.page >= pagination.totalPages}
                       className="btn-outline px-3 py-1.5 text-sm inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
@@ -470,7 +482,7 @@ export default function ResourcesPage() {
                       Next <ChevronRight className="w-4 h-4" />
                     </button>
                   </div>
-                </div>
+                </nav>
               )}
             </>
           )}
