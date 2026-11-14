@@ -1,10 +1,10 @@
 # API Contract — AYUSH Startup Registration Portal
 
-> **Document version:** 1.5 (draft — admin read-only and category routes implemented; contract review pending)
+> **Document version:** 1.5 (draft — Prakhar's auth, startup, and startup-application route shapes reviewed against implementation; cross-owner review pending)
 > **Phase:** Phase 2 — Chunk 4 (proposed API contract and team ownership)
 > **Status:** Aligned to the existing PostgreSQL schema. The categories and read-only admin endpoints described below are implemented; Prakhar and Arnav should review the API fields together. Sarth has verified and aligned the resources contract and connected the public and startup resource pages. This draft does not change the SQL or Prisma schema.
 
-This document is intended to be the source of truth for HTTP API communication between the React frontend and Express backend. Version 1.5 documents implemented categories and read-only admin routes; the affected collaborators must review it before treating the draft as final. See [team-roles.md](./team-roles.md) for the current division of project work.
+This document is intended to be the source of truth for HTTP API communication between the React frontend and Express backend. Version 1.5 documents implemented categories and read-only admin routes. Prakhar checked the auth, startup profile, and startup application sections against the current backend; Arnav's cross-owner review is still needed before treating the full draft as final. See [team-roles.md](./team-roles.md) for the current division of project work.
 
 ---
 
@@ -47,12 +47,12 @@ Backend env variables required in `backend/.env`:
 ```
 DATABASE_URL=...          # PostgreSQL connection string
 JWT_SECRET=...            # Random 256-bit secret
-JWT_EXPIRES_IN=7d         # Token lifetime
 PORT=3005
 FRONTEND_ORIGIN=http://localhost:5173
 ```
 
 `FRONTEND_ORIGIN` is the browser origin allowed by the Express CORS configuration.
+Backend-issued JWT sessions expire exactly 30 days after login or registration; the server does not allow an environment override. After expiry, the user must sign in again.
 
 ---
 
@@ -266,7 +266,8 @@ Register a new startup user account.
       "name": "Riya Sharma",
       "email": "riya@example.com",
       "role": "STARTUP",
-      "phone": "9876543210"
+      "phone": "9876543210",
+      "createdAt": "2026-11-14T10:30:00.000Z"
     }
   }
 }
@@ -302,7 +303,8 @@ Register a new startup user account.
       "name": "Riya Sharma",
       "email": "riya@example.com",
       "role": "STARTUP",
-      "phone": "9876543210"
+      "phone": "9876543210",
+      "createdAt": "2026-11-14T10:30:00.000Z"
     }
   }
 }
@@ -489,7 +491,7 @@ List applications for the authenticated startup.
 
 Get full application details.
 
-**Auth:** `STARTUP` (own), `OFFICER` (assigned or any if ADMIN)
+**Auth:** `STARTUP` (own application), `OFFICER` (assigned applications only), or `ADMIN` (any application)
 
 **Success `200`:**
 ```json
@@ -1020,9 +1022,11 @@ Resources are publicly accessible guides, portals, and regulatory links (read-on
 - `category` (optional): Filter by category name (e.g., `Government Portal`, `Startup Support`, `Research`, `Regulatory`, `Guide`, `Government Scheme`). Case-insensitive; passing `All` or omitting returns all categories.
 - `search` (optional): Case-insensitive search query matching against resource `title`, `category`, `summary`, and `description`.
 - `sortBy` (optional): Sort field (`title` or `category`).
-- `order` (optional): Sort direction (`asc` or `desc`, default `asc`).
+- `order` (optional): Sort direction (`asc` or `desc`, default `asc`); only valid when `sortBy` is provided.
 - `page` (optional): Positive integer, default `1`.
 - `limit` (optional): Positive integer between `1` and `50`, default `10`.
+
+Repeated query values and invalid sort fields or directions return `400` rather than being coerced or causing a server error.
 
 **Success `200`:** Paginated list using the common pagination envelope from Section 5:
 ```json
@@ -1217,5 +1221,5 @@ If a collaborator identifies a required schema change after this contract is agr
 
 ---
 
-*Draft reconciliation prepared 14 November 2026. The existing SQL and Prisma schema remain unchanged. Review the documented API fields and auth/health clarifications with the affected collaborators before treating version 1.5 as agreed.*
+*Draft reconciliation prepared 14 November 2026. The existing SQL and Prisma schema remain unchanged. Prakhar's route sections were checked against the backend and the full backend workflow was smoke-verified against PostgreSQL; review the contract with the affected collaborators, including Arnav's cross-owner sections, before treating version 1.5 as agreed.*
 

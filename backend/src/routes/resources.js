@@ -155,10 +155,24 @@ router.get('/', (req, res) => {
         })
     }
 
-    if (sortBy !== undefined && !['title', 'category'].includes(sortBy.toLowerCase())) {
+    if (sortBy !== undefined && (typeof sortBy !== 'string' || !['title', 'category'].includes(sortBy.toLowerCase()))) {
         return res.status(400).json({
             success: false,
             error: 'sortBy must be either "title" or "category".',
+        })
+    }
+
+    if (order !== undefined && (typeof order !== 'string' || !['asc', 'desc'].includes(order.toLowerCase()))) {
+        return res.status(400).json({
+            success: false,
+            error: 'order must be either "asc" or "desc".',
+        })
+    }
+
+    if (order !== undefined && sortBy === undefined) {
+        return res.status(400).json({
+            success: false,
+            error: 'order can only be used with sortBy.',
         })
     }
 

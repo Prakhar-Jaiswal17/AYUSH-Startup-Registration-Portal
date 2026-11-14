@@ -75,7 +75,7 @@ export default function AdminApplications() {
     }
   };
 
-  const rawList = Array.isArray(applications) ? applications : [];
+  const rawList = useMemo(() => (Array.isArray(applications) ? applications : []), [applications]);
   const reviewLinkBase = user?.role === 'admin' ? '/admin/applications' : '/officer/applications';
   const visibleStatuses = isApiSession ? statusOpts.filter((status) => status !== 'Draft') : statusOpts;
 

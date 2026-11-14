@@ -7,9 +7,9 @@ The project contains a React website, a development Electron launcher, an Expres
 ## Current implementation
 
 - **Database:** PostgreSQL design mapped to Prisma models and versioned migrations. The backend has a Prisma seed command for missing AYUSH category rows. See [database setup](./database/README.md).
-- **Backend:** CommonJS Express API with health, bcrypt/JWT authentication, startup profile, core application draft/read/update/submit/status-history, and public static resources routes.
-- **Website:** Public and startup resource pages use the backend resources API, including loading/error/empty states, search, category filtering, and pagination. Most authentication, profile, application, document, officer, and admin screens still use mock data or are not connected to backend workflows.
-- **Desktop:** Electron opens the same React/Vite website in a native window. It is a development launcher, not a packaged installer, and inherits the website's current mock-backed workflows.
+- **Backend:** CommonJS Express API with health, bcrypt/JWT authentication (30-day sign-in sessions), startup profile and application workflows, officer review, clarification queries, notifications, categories, read-only admin endpoints, and public static resources.
+- **Website:** Live API sessions use backend auth, startup profile/application flows, officer/admin review, queries, notifications, categories, and admin read screens. The resource area includes search highlighting, filters, working sort controls, bookmarks, copy-link, and CSV/JSON export. Demo role sign-in and demo workflows remain local. Document upload/verification is not connected.
+- **Desktop:** Electron opens the same React/Vite website in a native window. It is a development launcher, not a packaged installer; it inherits the website's live API sessions and local demo behavior.
 
 The portal may record an application's workflow status. It does not issue statutory AYUSH licences, regulatory approvals, or legal certifications.
 

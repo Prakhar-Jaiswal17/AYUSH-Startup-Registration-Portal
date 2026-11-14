@@ -7,7 +7,7 @@ function signToken(user) {
     const secret = process.env.JWT_SECRET
     if (!secret || Buffer.byteLength(secret) < 32) throw httpError(500, 'JWT_SECRET must contain at least 32 bytes.')
     return jwt.sign({ id: user.id, email: user.email, role: API_ROLES[user.role], name: user.fullName }, secret, {
-        expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+        expiresIn: '30d',
         issuer: 'ayush-startup-portal',
         audience: 'ayush-portal-client',
     })

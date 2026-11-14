@@ -46,7 +46,10 @@ api.interceptors.response.use(
     const requestAuthorization = error.config?.headers?.Authorization
       || error.config?.headers?.authorization
       || error.config?.headers?.get?.('Authorization');
-    if (error.response?.status === 401 && requestAuthorization && typeof localStorage !== 'undefined') {
+    const currentToken = typeof localStorage !== 'undefined'
+      ? localStorage.getItem(TOKEN_KEY)
+      : null;
+    if (error.response?.status === 401 && requestAuthorization && requestAuthorization === (currentToken ? `Bearer ${currentToken}` : null)) {
       localStorage.removeItem(TOKEN_KEY);
       try {
         const stored = JSON.parse(localStorage.getItem(AUTH_STORAGE_KEY) || 'null');
@@ -155,15 +158,35 @@ export const notificationAPI = {
 
 const resourceCache = new Map();
 const RESOURCE_CACHE_TTL_MS = 60 * 1000;
+const RESOURCE_CACHE_MAX_ENTRIES = 100;
+
+function resourceCacheKey(params) {
+  const normalizedParams = Object.fromEntries(
+    Object.entries(params || {}).sort(([left], [right]) => left.localeCompare(right)),
+  );
+  return JSON.stringify(normalizedParams);
+}
 
 export const resourceAPI = {
   getAll: (params) => {
-    const cacheKey = JSON.stringify(params || {});
+    const now = Date.now();
+    for (const [key, entry] of resourceCache) {
+      if (now - entry.timestamp >= RESOURCE_CACHE_TTL_MS) resourceCache.delete(key);
+    }
+
+    const cacheKey = resourceCacheKey(params);
     const cached = resourceCache.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < RESOURCE_CACHE_TTL_MS) {
+    if (cached) {
+      // Keep recently used entries at the end so eviction behaves like a small LRU cache.
+      resourceCache.delete(cacheKey);
+      resourceCache.set(cacheKey, cached);
       return Promise.resolve(cached.data);
     }
     return api.get('/resources', { params }).then((response) => {
+      if (resourceCache.size >= RESOURCE_CACHE_MAX_ENTRIES) {
+        const oldestKey = resourceCache.keys().next().value;
+        if (oldestKey !== undefined) resourceCache.delete(oldestKey);
+      }
       resourceCache.set(cacheKey, { timestamp: Date.now(), data: response });
       return response;
     });

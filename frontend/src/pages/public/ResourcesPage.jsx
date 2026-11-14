@@ -72,15 +72,40 @@ export default function ResourcesPage() {
   const [error, setError] = useState(null);
   const [reloadTrigger, setReloadTrigger] = useState(0);
   const [copiedId, setCopiedId] = useState(null);
+  const [copyFailedId, setCopyFailedId] = useState(null);
 
-  const handleCopyLink = (res) => {
+  const copyText = async (value) => {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(value);
+      return;
+    }
+
+    const input = document.createElement('textarea');
+    input.value = value;
+    input.setAttribute('readonly', '');
+    input.style.position = 'fixed';
+    input.style.opacity = '0';
+    document.body.appendChild(input);
+    input.select();
+    const copied = document.execCommand?.('copy');
+    input.remove();
+    if (!copied) throw new Error('Clipboard access is unavailable.');
+  };
+
+  const handleCopyLink = async (res) => {
     const fullUrl = res.url.startsWith('/')
       ? `${window.location.origin}${res.url}`
       : res.url;
-    navigator.clipboard.writeText(fullUrl).then(() => {
+    try {
+      await copyText(fullUrl);
       setCopiedId(res.id);
-      setTimeout(() => setCopiedId(null), 2000);
-    }).catch((err) => console.error('Failed to copy link:', err));
+      setCopyFailedId(null);
+      window.setTimeout(() => setCopiedId((current) => current === res.id ? null : current), 2000);
+    } catch (error) {
+      console.error('Failed to copy resource link:', error);
+      setCopyFailedId(res.id);
+      window.setTimeout(() => setCopyFailedId((current) => current === res.id ? null : current), 2500);
+    }
   };
 
   // Debounce search input to avoid hitting API on every keystroke
@@ -155,7 +180,7 @@ export default function ResourcesPage() {
     return () => {
       isCancelled = true;
     };
-  }, [page, selectedCategory, debouncedSearch, reloadTrigger]);
+  }, [page, selectedCategory, debouncedSearch, sortBy, reloadTrigger]);
 
   const handleCategoryChange = (category) => {
     setSelectedCategory(category);
@@ -294,7 +319,9 @@ export default function ResourcesPage() {
             {categories.map((cat) => (
               <button
                 key={cat}
+                type="button"
                 onClick={() => handleCategoryChange(cat)}
+                aria-pressed={selectedCategory === cat}
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                   selectedCategory === cat
                     ? 'bg-primary text-white shadow-md'
@@ -378,10 +405,13 @@ export default function ResourcesPage() {
                           <button
                             type="button"
                             onClick={() => handleCopyLink(resource)}
+                            aria-label={copyFailedId === resource.id ? 'Could not copy resource link' : copiedId === resource.id ? 'Resource link copied' : 'Copy resource link'}
                             className="ml-auto text-text-secondary hover:text-primary transition-colors p-1 rounded-md hover:bg-gray-100"
-                            title={copiedId === resource.id ? 'Copied link to clipboard!' : 'Copy resource link'}
+                            title={copyFailedId === resource.id ? 'Clipboard access unavailable' : copiedId === resource.id ? 'Copied link to clipboard!' : 'Copy resource link'}
                           >
-                            {copiedId === resource.id ? (
+                            {copyFailedId === resource.id ? (
+                              <AlertCircle className="w-3.5 h-3.5 text-red-600" />
+                            ) : copiedId === resource.id ? (
                               <Check className="w-3.5 h-3.5 text-emerald-600" />
                             ) : (
                               <Copy className="w-3.5 h-3.5" />

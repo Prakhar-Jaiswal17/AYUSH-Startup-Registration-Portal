@@ -49,10 +49,12 @@ export default function StartupResources() {
   const [error, setError] = useState(null);
   const [reloadTrigger, setReloadTrigger] = useState(0);
   const [copiedId, setCopiedId] = useState(null);
+  const [copyFailedId, setCopyFailedId] = useState(null);
   const [bookmarks, setBookmarks] = useState(() => {
     try {
       const saved = localStorage.getItem('ayush_bookmarked_resources');
-      return saved ? JSON.parse(saved) : [];
+      const parsed = saved ? JSON.parse(saved) : [];
+      return Array.isArray(parsed) ? parsed.filter((id) => typeof id === 'string') : [];
     } catch {
       return [];
     }
@@ -63,19 +65,45 @@ export default function StartupResources() {
       const next = prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id];
       try {
         localStorage.setItem('ayush_bookmarked_resources', JSON.stringify(next));
-      } catch {}
+      } catch {
+        // Keep the in-memory bookmark usable when browser storage is unavailable.
+      }
       return next;
     });
   };
 
-  const handleCopyLink = (res) => {
+  const copyText = async (value) => {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(value);
+      return;
+    }
+
+    const input = document.createElement('textarea');
+    input.value = value;
+    input.setAttribute('readonly', '');
+    input.style.position = 'fixed';
+    input.style.opacity = '0';
+    document.body.appendChild(input);
+    input.select();
+    const copied = document.execCommand?.('copy');
+    input.remove();
+    if (!copied) throw new Error('Clipboard access is unavailable.');
+  };
+
+  const handleCopyLink = async (res) => {
     const fullUrl = res.url.startsWith('/')
       ? `${window.location.origin}${res.url}`
       : res.url;
-    navigator.clipboard.writeText(fullUrl).then(() => {
+    try {
+      await copyText(fullUrl);
       setCopiedId(res.id);
-      setTimeout(() => setCopiedId(null), 2000);
-    }).catch((err) => console.error('Failed to copy link:', err));
+      setCopyFailedId(null);
+      window.setTimeout(() => setCopiedId((current) => current === res.id ? null : current), 2000);
+    } catch (error) {
+      console.error('Failed to copy resource link:', error);
+      setCopyFailedId(res.id);
+      window.setTimeout(() => setCopyFailedId((current) => current === res.id ? null : current), 2500);
+    }
   };
 
   // Debounce search
@@ -155,7 +183,7 @@ export default function StartupResources() {
     return () => {
       isCancelled = true;
     };
-  }, [page, category, debouncedSearch, reloadTrigger]);
+  }, [page, category, debouncedSearch, sortBy, bookmarks, reloadTrigger]);
 
   const handleCategoryChange = (c) => {
     setCategory(c);
@@ -211,7 +239,9 @@ export default function StartupResources() {
             {categories.map((c) => (
               <button
                 key={c}
+                type="button"
                 onClick={() => handleCategoryChange(c)}
+                aria-pressed={category === c}
                 className={`px-3 py-1.5 text-sm rounded-lg whitespace-nowrap transition-colors ${
                   category === c
                     ? 'bg-primary text-white shadow-sm'
@@ -296,6 +326,8 @@ export default function StartupResources() {
                         <button
                           type="button"
                           onClick={() => toggleBookmark(res.id)}
+                          aria-label={bookmarks.includes(res.id) ? `Remove ${res.title} from bookmarks` : `Add ${res.title} to bookmarks`}
+                          aria-pressed={bookmarks.includes(res.id)}
                           className="text-text-secondary hover:text-amber-500 transition-colors p-1 rounded-md hover:bg-gray-100"
                           title={bookmarks.includes(res.id) ? 'Remove from bookmarks' : 'Add to bookmarks'}
                         >
@@ -309,10 +341,13 @@ export default function StartupResources() {
                           <button
                             type="button"
                             onClick={() => handleCopyLink(res)}
+                            aria-label={copyFailedId === res.id ? 'Could not copy resource link' : copiedId === res.id ? 'Resource link copied' : 'Copy resource link'}
                             className="text-text-secondary hover:text-primary transition-colors p-1 rounded-md hover:bg-gray-100"
-                            title={copiedId === res.id ? 'Copied link!' : 'Copy link'}
+                            title={copyFailedId === res.id ? 'Clipboard access unavailable' : copiedId === res.id ? 'Copied link!' : 'Copy link'}
                           >
-                            {copiedId === res.id ? (
+                            {copyFailedId === res.id ? (
+                              <AlertCircle className="w-3.5 h-3.5 text-red-600" />
+                            ) : copiedId === res.id ? (
                               <Check className="w-3.5 h-3.5 text-emerald-600" />
                             ) : (
                               <Copy className="w-3.5 h-3.5" />
