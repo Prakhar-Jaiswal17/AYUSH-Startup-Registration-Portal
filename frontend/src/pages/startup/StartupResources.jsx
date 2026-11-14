@@ -186,6 +186,7 @@ export default function StartupResources() {
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
             <input
               type="text"
+              aria-label="Search resources"
               placeholder="Search resources..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -193,6 +194,7 @@ export default function StartupResources() {
             />
           </div>
           <select
+            aria-label="Sort resources"
             value={sortBy}
             onChange={(e) => {
               setSortBy(e.target.value);
@@ -354,7 +356,10 @@ export default function StartupResources() {
 
             {/* Pagination Controls */}
             {pagination.totalPages > 1 && (
-              <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border pt-4">
+              <nav
+                aria-label="Startup resources pagination"
+                className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border pt-4"
+              >
                 <p className="text-xs text-text-secondary">
                   Showing {(pagination.page - 1) * pagination.limit + 1} to{' '}
                   {Math.min(pagination.page * pagination.limit, pagination.total)} of{' '}
@@ -363,6 +368,8 @@ export default function StartupResources() {
 
                 <div className="flex items-center gap-2">
                   <button
+                    type="button"
+                    aria-label="Previous page"
                     onClick={() => setPage((p) => Math.max(p - 1, 1))}
                     disabled={pagination.page <= 1}
                     className="btn-outline px-2.5 py-1 text-xs inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
@@ -374,6 +381,9 @@ export default function StartupResources() {
                     {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((pageNum) => (
                       <button
                         key={pageNum}
+                        type="button"
+                        aria-label={`Page ${pageNum}`}
+                        aria-current={pagination.page === pageNum ? 'page' : undefined}
                         onClick={() => setPage(pageNum)}
                         className={`w-7 h-7 rounded text-xs font-medium transition-colors ${
                           pagination.page === pageNum
@@ -387,6 +397,8 @@ export default function StartupResources() {
                   </div>
 
                   <button
+                    type="button"
+                    aria-label="Next page"
                     onClick={() => setPage((p) => Math.min(p + 1, pagination.totalPages))}
                     disabled={pagination.page >= pagination.totalPages}
                     className="btn-outline px-2.5 py-1 text-xs inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
@@ -394,7 +406,7 @@ export default function StartupResources() {
                     Next <ChevronRight className="w-3 h-3" />
                   </button>
                 </div>
-              </div>
+              </nav>
             )}
           </>
         )}
