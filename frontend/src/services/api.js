@@ -147,6 +147,9 @@ export const adminAPI = {
   getAnalytics: () => api.get('/admin/analytics'),
   getUsers: (params) => api.get('/admin/users', { params }),
   getOfficers: (params) => api.get('/admin/users', { params: { ...params, role: 'OFFICER' } }),
+  createUser: (data) => api.post('/admin/users', data),
+  updateUser: (id, data) => api.patch(`/admin/users/${id}`, data),
+  deleteUser: (id) => api.delete(`/admin/users/${id}`),
   getAuditLogs: (params) => api.get('/admin/audit-logs', { params }),
 };
 

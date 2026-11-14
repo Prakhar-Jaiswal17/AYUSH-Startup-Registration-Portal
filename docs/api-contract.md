@@ -230,10 +230,11 @@ The following earlier contract fields have no persistence column and must not be
 | Document upload and verification APIs | `/api/applications/:id/documents`, `/api/documents/*` | **To be assigned** |
 | AYUSH categories API and admin categories screen | `/api/categories`; `AdminCategories.jsx` | **Arnav** |
 | Read-only admin analytics, user listing, audit logs, and screen integration | `GET /api/admin/analytics`, `/users`, `/audit-logs`; admin pages | **Arnav** |
+| Admin account creation, role changes, deletion, and role-filter UI | `POST/PATCH/DELETE /api/admin/users`; `AdminOfficers.jsx`, `AdminUsers.jsx` | **Prakhar** |
 
 ### Route mounting in `server.js`
 
-Prakhar maintains route registration in `backend/src/server.js`. The officer router is mounted at `/api/officer`; the category and read-only admin routers are mounted at `/api/categories` and `/api/admin`. Future route owners should coordinate route registration with Prakhar before adding route modules.
+Prakhar maintains route registration in `backend/src/server.js`. The officer router is mounted at `/api/officer`; the category router is mounted at `/api/categories`, and admin read/write routes are mounted at `/api/admin`. Future route owners should coordinate route registration with Prakhar before adding route modules.
 
 ---
 
@@ -992,6 +993,26 @@ Mark all notifications as read for the authenticated user.
 
 **Success `200`:** Paginated list of user objects (without `passwordHash` or account activation state). Each item includes `id`, `name`, `email`, `role`, `phone`, `createdAt`, and `startup` (either `{ "id", "legalName", "brandName" }` or `null`).
 
+### `POST /api/admin/users`
+
+**Auth:** `ADMIN` only. Creates a database account; public registration continues to create `STARTUP` accounts only.
+
+**Required JSON fields:** `name`, `email`, `password`, and `role` (`STARTUP`, `OFFICER`, or `ADMIN`). Optional fields: `phone`, `designation`, `department`, and `assignedStates` (array of state names). Passwords must be at least 8 characters and no more than 72 UTF-8 bytes. Passwords are hashed with bcrypt and are never returned. The administrator must share the initial password securely; no email/invitation is sent.
+
+**Success `201`:** The created account (excluding password and password hash), including `id`, `name`, `email`, `role`, officer metadata, and `createdAt`.
+
+### `PATCH /api/admin/users/:id`
+
+**Auth:** `ADMIN` only. Updates supplied account fields; the current admin screen uses this to change `role` to `STARTUP`, `OFFICER`, or `ADMIN`.
+
+**Success `200`:** Updated account (never includes password material). Duplicate emails return `409`. An admin cannot remove their own administrator role, and the last administrator cannot be demoted.
+
+### `DELETE /api/admin/users/:id`
+
+**Auth:** `ADMIN` only. Permanently deletes the selected account. The signed-in admin cannot delete their own account, and the last administrator cannot be deleted. Database foreign-key rules apply: deleting a startup owner cascades to that startup profile and its applications and dependent records; deleting an officer clears application assignments, while officer-raised clarification records and user-owned notifications may be deleted. Audit records remain with the actor reference cleared where the schema specifies `SET NULL`.
+
+**Success `200`:** `{ "success": true, "data": { "id": "<deleted-user-id>", "message": "Account deleted." } }`.
+
 ---
 
 ### `PATCH /api/admin/users/:id/toggle-active` — deferred
@@ -1201,7 +1222,7 @@ export const STATUS_COLORS = {
 - The API client wrappers follow the endpoint shapes in this document. The public and startup resources pages consume `resourceAPI`; `AuthContext` consumes auth and startup profile endpoints; applicant screens consume startup/application and clarification endpoints for live startup accounts. Officer/admin queues, assignment, review, clarification, notification, category, analytics, user-list, and audit-log screens are connected to the API. Demo flows and demo notifications remain local.
 - The client-side `generateAppId()` helper was removed. The local demo uses an internal `mock-…` record ID and leaves `trackingNumber` empty; only the backend may generate the database application ID in the required formatted string.
 - Native `alert()` feedback was removed from `NewApplication.jsx` and replaced with inline feedback. Other prototype pages may still contain placeholder alerts.
-- Auth, startup profile, core application, officer queue, assignment, review-start, decision, clarification-query, notification-list/read, category-list, and read-only admin analytics/user/audit-log endpoints are implemented. Real applicant flows and officer/admin review and admin oversight screens consume their APIs for live sessions. Applicants can read and respond to clarification queries and resubmit; officers/admins can raise and resolve them. Startup, officer, and admin screens load notifications and mark them read. The seven-step form maps AYUSH labels to seeded category codes and stores regulatory/business answers in the documented JSON fields. Demo mode remains local. Document upload/verification and account activation remain unimplemented.
+- Auth, startup profile, core application, officer queue, assignment, review-start, decision, clarification-query, notification-list/read, category-list, and admin analytics/user CRUD/audit-log endpoints are implemented. Real applicant flows, officer/admin review, and admin account-management screens consume their APIs for live sessions. Admins can create STARTUP/OFFICER/ADMIN accounts, change user roles, and permanently delete accounts. The server prevents self-demotion/self-deletion and protects the last admin; authentication reads the current database role so role changes and deletion take effect on the next request. Applicants can read and respond to clarification queries and resubmit; officers/admins can raise and resolve them. Startup, officer, and admin screens load notifications and mark them read. The seven-step form maps AYUSH labels to seeded category codes and stores regulatory/business answers in the documented JSON fields. Demo mode remains local. Document upload/verification and account activation remain unimplemented.
 - Application detail reads server status history, founders, documents, and clarification queries. The live applicant flow can respond to queries but does not upload documents. The officer review page displays document metadata but does not open or verify files. Founder records belong to the startup profile and cannot hold application-specific founder snapshots in this schema.
 - See [implementation-status.md](./implementation-status.md) for backend readiness and SQL/Prisma alignment gaps.
 
