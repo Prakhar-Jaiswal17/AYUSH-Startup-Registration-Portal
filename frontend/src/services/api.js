@@ -144,7 +144,6 @@ export const adminAPI = {
   getAnalytics: () => api.get('/admin/analytics'),
   getUsers: (params) => api.get('/admin/users', { params }),
   getOfficers: (params) => api.get('/admin/users', { params: { ...params, role: 'OFFICER' } }),
-  toggleUserActive: (userId) => api.patch(`/admin/users/${userId}/toggle-active`),
   getAuditLogs: (params) => api.get('/admin/audit-logs', { params }),
 };
 

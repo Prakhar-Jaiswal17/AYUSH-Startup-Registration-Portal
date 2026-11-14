@@ -16,7 +16,7 @@ The project uses JavaScript throughout; TypeScript is not part of the plan.
 
 ## Current integration
 
-- `frontend/src/services/api.js` holds Axios wrappers. Auth, startup profile, application, officer review, clarification, notification, and resources wrappers are consumed by live frontend flows. Document, admin account-management, and category workflows are not connected.
+- `frontend/src/services/api.js` holds Axios wrappers. Auth, startup profile, application, officer review, clarification, notification, resources, category, admin analytics, user listing, and audit-log wrappers are consumed by live frontend flows. Document upload/verification and account activation are not implemented.
 - `AuthContext` uses the backend for real login, registration, logout, session restoration, and startup profile loading. `ApplicationContext` loads live applicant applications or reviewer queues and supports startup draft/submission and reviewer assignment/review/decision actions. `NotificationContext` loads server notifications for API sessions and uses local storage for demo sessions.
 - Backend environment settings, including `DATABASE_URL`, belong in `backend/.env`. Keep real `.env` files private. Frontend `VITE_*` values are exposed to the browser and must not contain secrets.
 - The Electron launcher loads the website and therefore inherits whichever website integrations are active.

@@ -1,20 +1,20 @@
 # Project Collaborator Responsibilities
 
-**Repository review:** 14 November 2026. This describes the tracked implementation in the shared repository; it cannot account for uncommitted work on a teammate's machine.
+**Repository review:** 14 November 2026. This describes the implementation in the shared repository; it cannot account for uncommitted work on a teammate's machine.
 
 The API proposal and endpoint ownership are detailed in [api-contract.md](./api-contract.md). The proposal remains subject to review by the relevant route owners.
 
 ## Prakhar
 
-**Implemented in the repository:** shared Prisma client and database connection, JWT authentication middleware, registration/login/profile/logout endpoints, startup profile endpoints, startup application draft/read/update/submit/status-history endpoints, validation, tracking identifiers, ownership rules, and route mounting.
+**Implemented in the repository:** shared Prisma client and database connection, JWT authentication middleware, registration/login/profile/logout endpoints, startup profile endpoints, startup application draft/read/update/submit/status-history endpoints, validation, tracking identifiers, ownership rules, and route registration in the Express server.
 
 **Remaining:** review and confirm the API contract with Arnav; help run the complete startup-to-officer workflow with Arnav; address integration issues in the routes owned here.
 
 ## Arnav
 
-**Implemented in the repository:** real login, registration, logout, and session restoration use the auth API; API roles are normalized for React, and the bearer token is stored for protected requests. Startup profile display and applicant application list, detail, draft creation/editing, and submission use the backend for live accounts, including server-issued tracking IDs. Startup detail screens support clarification query listing, responding, and resubmitting. Officer accounts load their assigned queue and use the review-start, decision, and clarification APIs; the review screen supports raising and resolving queries. Admin accounts load the non-draft queue, assign officers, and can open the review screen. Startup, officer, and admin sessions load and update notifications through the API. Demo role sign-in and demo workflows remain local. Document, admin account-management, and analytics workflows are not yet connected.
+**Implemented in the repository:** real login, registration, logout, and session restoration use the auth API; API roles are normalized for React, and the bearer token is stored for protected requests. Startup profile display and applicant application list, detail, draft creation/editing, and submission use the backend for live accounts, including server-issued tracking IDs. Startup detail screens support clarification query listing, responding, and resubmitting. Officer accounts load their assigned queue and use the review-start, decision, and clarification APIs; the review screen supports raising and resolving queries. Admin accounts load the non-draft queue, assign officers, and can open the review screen. Startup, officer, and admin sessions load and update notifications through the API. The admin categories screen uses the public category endpoint; admin analytics, startup-user listing, and audit-log screens use protected read-only endpoints. Demo role sign-in and demo workflows remain local.
 
-**Remaining:** collaborate with Prakhar on end-to-end workflow verification. Document upload/verification remains unassigned and requires coordination before its API and storage flow is built.
+**Remaining:** run the complete startup-to-officer workflow with Prakhar, including registration/login, application submission, assignment, review, clarification response/resubmission, decision, and notifications. Document upload/verification remains unassigned and requires coordination before its API and storage flow is built. Admin account activation is not supported by the current schema.
 
 ## Sarth
 
@@ -27,7 +27,5 @@ The API proposal and endpoint ownership are detailed in [api-contract.md](./api-
 The current plan does not explicitly assign:
 
 - Document upload, download, and verification APIs and private file storage.
-- An AYUSH categories API (the frontend wrapper exists, but no backend route is mounted).
-- Admin analytics, user-management, and audit-log APIs and their live UI integration.
 
-Decide whether these are required for the project release and assign owners. Admin review-screen integration is assigned to Arnav. Coordinate any further route mounting and contract changes with Prakhar and the relevant owner.
+Decide whether document handling is required for the project release and assign an owner. Prakhar maintains shared route registration; coordinate any future route mounting and contract changes with him and the relevant owner. The category and read-only admin endpoints and their screen integrations are implemented by Arnav; they still need runtime verification against the shared database.

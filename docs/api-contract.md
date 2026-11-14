@@ -1,10 +1,10 @@
 # API Contract — AYUSH Startup Registration Portal
 
-> **Document version:** 1.4 (draft — auth and health-response clarifications proposed)
+> **Document version:** 1.5 (draft — admin read-only and category routes implemented; contract review pending)
 > **Phase:** Phase 2 — Chunk 4 (proposed API contract and team ownership)
-> **Status:** Proposed alignment with the existing PostgreSQL schema; Prakhar and Arnav review API fields together; Sarth has verified and aligned the resources contract and connected the public and startup resource pages. This draft does not change the SQL or Prisma schema.
+> **Status:** Aligned to the existing PostgreSQL schema. The categories and read-only admin endpoints described below are implemented; Prakhar and Arnav should review the API fields together. Sarth has verified and aligned the resources contract and connected the public and startup resource pages. This draft does not change the SQL or Prisma schema.
 
-This document is intended to be the source of truth for HTTP API communication between the React frontend and Express backend. Version 1.4 is a proposal; the affected collaborators must review it before its field changes replace the previously agreed contract. See [team-roles.md](./team-roles.md) for the full division of project work.
+This document is intended to be the source of truth for HTTP API communication between the React frontend and Express backend. Version 1.5 documents implemented categories and read-only admin routes; the affected collaborators must review it before treating the draft as final. See [team-roles.md](./team-roles.md) for the current division of project work.
 
 ---
 
@@ -228,12 +228,12 @@ The following earlier contract fields have no persistence column and must not be
 | Curated static resources and public resources page integration | `backend/src/routes/resources.js`, public resources page | **Sarth**; the endpoint already exists |
 | Route registration in the Express server | `backend/src/server.js` | **Prakhar** |
 | Document upload and verification APIs | `/api/applications/:id/documents`, `/api/documents/*` | **To be assigned** |
-| AYUSH categories API | `/api/categories` | **To be assigned** |
-| Admin analytics, user-management, and audit-log APIs | `/api/admin/*` | **To be confirmed**; Arnav connects the admin review screens |
+| AYUSH categories API and admin categories screen | `/api/categories`; `AdminCategories.jsx` | **Arnav** |
+| Read-only admin analytics, user listing, audit logs, and screen integration | `GET /api/admin/analytics`, `/users`, `/audit-logs`; admin pages | **Arnav** |
 
 ### Route mounting in `server.js`
 
-Prakhar maintains route registration in `backend/src/server.js`. The officer router for the connected review APIs is mounted at `/api/officer`; future route owners should coordinate route registration with Prakhar before adding route modules.
+Prakhar maintains route registration in `backend/src/server.js`. The officer router is mounted at `/api/officer`; the category and read-only admin routers are mounted at `/api/categories` and `/api/admin`. Future route owners should coordinate route registration with Prakhar before adding route modules.
 
 ---
 
@@ -951,7 +951,9 @@ Mark all notifications as read for the authenticated user.
 {
   "success": true,
   "data": {
+    "totalStartups": 75,
     "totalApplications": 120,
+    "totalOfficers": 8,
     "byStatus": {
       "DRAFT": 10,
       "SUBMITTED": 20,
@@ -964,6 +966,12 @@ Mark all notifications as read for the authenticated user.
     "byCategory": [
       { "categoryName": "Ayurveda", "count": 60 },
       { "categoryName": "Yoga & Naturopathy", "count": 25 }
+    ],
+    "byState": [
+      { "state": "Maharashtra", "count": 20 }
+    ],
+    "registrationTrend": [
+      { "month": "Dec", "startups": 4, "applications": 6 }
     ],
     "recentApplications": [ ]
   }
@@ -978,13 +986,15 @@ Mark all notifications as read for the authenticated user.
 
 **Query params:** `role`, `page`, `limit`, `search`
 
-**Success `200`:** Paginated list of user objects (without `passwordHash`).
+`role` accepts `STARTUP`, `OFFICER`, or `ADMIN`; omitted means all three. `search` matches the user's name, email, or associated startup's legal/brand name.
+
+**Success `200`:** Paginated list of user objects (without `passwordHash` or account activation state). Each item includes `id`, `name`, `email`, `role`, `phone`, `createdAt`, and `startup` (either `{ "id", "legalName", "brandName" }` or `null`).
 
 ---
 
 ### `PATCH /api/admin/users/:id/toggle-active` — deferred
 
-The current `User` schema has no account-active field. Do not implement this route or expose an `isActive` filter until the affected collaborators agree to a schema change and its migration. If the feature is not approved, remove this route from the agreed contract and frontend wrapper.
+The current `User` schema has no account-active field. Do not implement this route or expose an `isActive` filter until the affected collaborators agree to a schema change and its migration. The frontend wrapper has been removed while this feature is deferred.
 
 ---
 
@@ -992,9 +1002,9 @@ The current `User` schema has no account-active field. Do not implement this rou
 
 **Auth:** `ADMIN` only
 
-**Query params:** `actorId`, `entityType`, `action`, `page`, `limit`
+**Query params:** `actorId`, `entityType`, `action`, `actorRole`, `search`, `page`, `limit`. `actorRole` accepts `STARTUP`, `OFFICER`, `ADMIN`, or `SYSTEM`; `search` matches actor name, action, target type/id, and details.
 
-**Success `200`:** Paginated list of audit log entries.
+**Success `200`:** Paginated audit log entries with `id`, `actorId`, `actorName`, `actorRole`, `action`, `targetEntity`, `targetId`, `details`, `ipAddress`, and `createdAt`.
 
 ---
 
@@ -1083,6 +1093,8 @@ Resources are publicly accessible guides, portals, and regulatory links (read-on
 Returns the list of AYUSH categories (Ayurveda, Yoga & Naturopathy, Unani, Siddha, Homoeopathy). The `code` is the category identifier; there is no separate UUID `id`.
 
 **Auth:** None (public)
+
+Only active AYUSH categories are returned, sorted by name. This endpoint does not return business activities or document requirements; those remain static reference lists in the current admin screen.
 
 **Success `200`:**
 ```json
@@ -1180,10 +1192,10 @@ export const STATUS_COLORS = {
 
 ### Frontend implementation status
 
-- The API client wrappers follow the endpoint shapes in this document. The public and startup resources pages consume `resourceAPI`; `AuthContext` consumes auth and startup profile endpoints; applicant screens consume startup/application and clarification endpoints for live startup accounts. Officer/admin queues, assignment, review start, decision, clarification, and notification actions are connected to the API. Demo flows and demo notifications remain local.
+- The API client wrappers follow the endpoint shapes in this document. The public and startup resources pages consume `resourceAPI`; `AuthContext` consumes auth and startup profile endpoints; applicant screens consume startup/application and clarification endpoints for live startup accounts. Officer/admin queues, assignment, review, clarification, notification, category, analytics, user-list, and audit-log screens are connected to the API. Demo flows and demo notifications remain local.
 - The client-side `generateAppId()` helper was removed. The local demo uses an internal `mock-…` record ID and leaves `trackingNumber` empty; only the backend may generate the database application ID in the required formatted string.
 - Native `alert()` feedback was removed from `NewApplication.jsx` and replaced with inline feedback. Other prototype pages may still contain placeholder alerts.
-- Auth, startup profile, core application, officer queue, assignment, review-start, decision, clarification-query, and notification-list/read endpoints are implemented. Real applicant flows and officer/admin review screens consume their APIs for live sessions. Applicants can read and respond to clarification queries and resubmit; officers/admins can raise and resolve them. Startup, officer, and admin screens load notifications and mark them read. The seven-step form maps AYUSH labels to seeded category codes and stores regulatory/business answers in the documented JSON fields. Demo mode remains local. Document, admin account-management/analytics, and category backend routes and UI integrations remain incomplete.
+- Auth, startup profile, core application, officer queue, assignment, review-start, decision, clarification-query, notification-list/read, category-list, and read-only admin analytics/user/audit-log endpoints are implemented. Real applicant flows and officer/admin review and admin oversight screens consume their APIs for live sessions. Applicants can read and respond to clarification queries and resubmit; officers/admins can raise and resolve them. Startup, officer, and admin screens load notifications and mark them read. The seven-step form maps AYUSH labels to seeded category codes and stores regulatory/business answers in the documented JSON fields. Demo mode remains local. Document upload/verification and account activation remain unimplemented.
 - Application detail reads server status history, founders, documents, and clarification queries. The live applicant flow can respond to queries but does not upload documents. The officer review page displays document metadata but does not open or verify files. Founder records belong to the startup profile and cannot hold application-specific founder snapshots in this schema.
 - See [implementation-status.md](./implementation-status.md) for backend readiness and SQL/Prisma alignment gaps.
 
@@ -1203,5 +1215,5 @@ If a collaborator identifies a required schema change after this contract is agr
 
 ---
 
-*Draft reconciliation prepared 14 November 2026. The existing SQL and Prisma schema remain unchanged. Review the proposed API field changes and auth/health clarifications with the affected collaborators before treating version 1.4 as agreed.*
+*Draft reconciliation prepared 14 November 2026. The existing SQL and Prisma schema remain unchanged. Review the documented API fields and auth/health clarifications with the affected collaborators before treating version 1.5 as agreed.*
 

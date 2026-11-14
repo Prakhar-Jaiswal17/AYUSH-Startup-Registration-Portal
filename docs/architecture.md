@@ -21,7 +21,7 @@ flowchart LR
 - **Persistence:** The auth/startup/application endpoints use the shared Prisma client and PostgreSQL. Resource content is currently static in the resources route rather than stored in the database.
 - **File storage:** There is no server-side upload/download implementation yet.
 
-The backend routes exist independently of the React contexts. The connected website uses the auth, startup, application, resources, officer/admin review, clarification, and notification routes described above. Document, admin account-management, and analytics workflows remain incomplete. See [implementation-status.md](./implementation-status.md) for checks and remaining work.
+The backend routes exist independently of the React contexts. The connected website uses the auth, startup, application, resources, category, officer/admin review, clarification, notification, admin analytics, user-list, and audit-log routes described above. Document upload/verification and account activation remain incomplete. See [implementation-status.md](./implementation-status.md) for checks and remaining work.
 
 ## Layer responsibilities
 
@@ -31,7 +31,7 @@ React renders the public and role-specific screens and sends HTTP requests throu
 
 ### API
 
-Express handles HTTP requests, validation, authentication, authorization, and workflow rules. Implemented endpoint prefixes include `/api/auth`, `/api/startups`, `/api/applications`, `/api/officer`, `/api/queries`, `/api/notifications`, and `/api/resources`. Assignment, review-start, decision, and query actions are mounted under their documented `/api` paths. Document, admin account-management, and category routes are not complete.
+Express handles HTTP requests, validation, authentication, authorization, and workflow rules. Implemented endpoint prefixes include `/api/auth`, `/api/startups`, `/api/applications`, `/api/officer`, `/api/queries`, `/api/notifications`, `/api/resources`, `/api/categories`, and read-only `/api/admin` endpoints. Assignment, review-start, decision, and query actions are mounted under their documented `/api` paths. Document upload/verification and account activation are not complete.
 
 ### Database and file storage
 
