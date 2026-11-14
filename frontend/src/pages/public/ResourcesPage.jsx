@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { resourceAPI, getApiErrorMessage } from '../../services/api';
 import PageTransition from '../../layouts/PageTransition';
+import HighlightText from '../../components/common/HighlightText';
 
 const categories = [
   'All',
@@ -388,11 +389,11 @@ export default function ResourcesPage() {
                       </div>
 
                       <h3 className="text-lg font-semibold text-text-primary mb-2 leading-snug">
-                        {resource.title}
+                        <HighlightText text={resource.title} query={debouncedSearch} />
                       </h3>
 
                       <p className="text-text-secondary text-sm leading-relaxed flex-1 mb-5">
-                        {resource.description || resource.summary}
+                        <HighlightText text={resource.description || resource.summary} query={debouncedSearch} />
                       </p>
 
                       <div className="pt-4 border-t border-border-light mt-auto">

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { resourceAPI, getApiErrorMessage } from '../../services/api';
 import PageTransition from '../../layouts/PageTransition';
+import HighlightText from '../../components/common/HighlightText';
 
 const categories = [
   'All',
@@ -283,7 +284,7 @@ export default function StartupResources() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="font-medium text-sm text-text-primary leading-snug">
-                          {res.title}
+                          <HighlightText text={res.title} query={debouncedSearch} />
                         </p>
                         <span className="text-xs px-1.5 py-0.5 bg-primary/5 text-primary rounded mt-1 inline-block">
                           {res.category}
