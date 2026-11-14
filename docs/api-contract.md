@@ -880,7 +880,7 @@ Officer approves or rejects an application.
 }
 ```
 
-**Notes:** Only `UNDER_REVIEW` applications may be decided. The assigned officer or ADMIN may act; rejection requires a non-empty reason. Backend records the remark in status history, creates an audit event, and inserts a status-update notification for the startup. Notification read/list APIs and screens are separate and are not implemented yet. No certificate number or statutory approval is issued. For `APPROVED`, the team must agree whether to add a portal recognition reference field or defer it; the current schema has no `metadata` field. Prakhar and Arnav coordinate any related API or schema amendment before implementation.
+**Notes:** Only `UNDER_REVIEW` applications may be decided. The assigned officer or ADMIN may act; rejection requires a non-empty reason. Backend records the remark in status history, creates an audit event, and inserts a status-update notification for the startup. Notification list/read APIs and screens are separate from this decision endpoint. No certificate number or statutory approval is issued. For `APPROVED`, the team must agree whether to add a portal recognition reference field or defer it; the current schema has no `metadata` field. Prakhar and Arnav coordinate any related API or schema amendment before implementation.
 
 ---
 
@@ -899,7 +899,7 @@ Officer approves or rejects an application.
       "id": "uuid",
       "title": "Application Submitted",
       "message": "Your application APP-2025-007 has been submitted successfully.",
-      "type": "STATUS_CHANGE",
+      "type": "status_update",
       "isRead": false,
       "applicationId": "APP-2025-007",
       "createdAt": "2025-11-11T12:00:00.000Z"
@@ -912,7 +912,7 @@ Officer approves or rejects an application.
 
 ### `PATCH /api/notifications/:id/read`
 
-**Auth:** Owner of the notification
+**Auth:** Any authenticated user; only that user's notification can be updated. Unknown IDs and IDs owned by another user return `404`.
 
 **Success `200`:**
 ```json
@@ -1180,10 +1180,10 @@ export const STATUS_COLORS = {
 
 ### Frontend implementation status
 
-- The API client wrappers follow the endpoint shapes in this document. The public and startup resources pages consume `resourceAPI`; `AuthContext` consumes auth and startup profile endpoints; applicant screens consume startup/application and clarification endpoints for live startup accounts. Officer/admin queues, assignment, review start, decision, and clarification actions are connected to the API. Demo flows remain local, and `NotificationContext` remains mock-backed.
+- The API client wrappers follow the endpoint shapes in this document. The public and startup resources pages consume `resourceAPI`; `AuthContext` consumes auth and startup profile endpoints; applicant screens consume startup/application and clarification endpoints for live startup accounts. Officer/admin queues, assignment, review start, decision, clarification, and notification actions are connected to the API. Demo flows and demo notifications remain local.
 - The client-side `generateAppId()` helper was removed. The local demo uses an internal `mock-…` record ID and leaves `trackingNumber` empty; only the backend may generate the database application ID in the required formatted string.
 - Native `alert()` feedback was removed from `NewApplication.jsx` and replaced with inline feedback. Other prototype pages may still contain placeholder alerts.
-- Auth, startup profile, core application, officer queue, assignment, review-start, decision, and clarification-query endpoints are implemented. Real applicant flows and officer/admin review screens consume their APIs for live sessions. Applicants can read and respond to clarification queries and resubmit; officers/admins can raise and resolve them. The seven-step form maps AYUSH labels to seeded category codes and stores regulatory/business answers in the documented JSON fields. Demo mode remains local. Notification-list/read, document, admin account-management/analytics, and category backend routes and UI integrations remain incomplete.
+- Auth, startup profile, core application, officer queue, assignment, review-start, decision, clarification-query, and notification-list/read endpoints are implemented. Real applicant flows and officer/admin review screens consume their APIs for live sessions. Applicants can read and respond to clarification queries and resubmit; officers/admins can raise and resolve them. Startup, officer, and admin screens load notifications and mark them read. The seven-step form maps AYUSH labels to seeded category codes and stores regulatory/business answers in the documented JSON fields. Demo mode remains local. Document, admin account-management/analytics, and category backend routes and UI integrations remain incomplete.
 - Application detail reads server status history, founders, documents, and clarification queries. The live applicant flow can respond to queries but does not upload documents. The officer review page displays document metadata but does not open or verify files. Founder records belong to the startup profile and cannot hold application-specific founder snapshots in this schema.
 - See [implementation-status.md](./implementation-status.md) for backend readiness and SQL/Prisma alignment gaps.
 

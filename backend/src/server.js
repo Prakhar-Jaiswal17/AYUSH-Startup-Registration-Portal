@@ -8,6 +8,7 @@ const startupRoutes = require('./routes/startups').router
 const applicationRoutes = require('./routes/applications')
 const officerRoutes = require('./routes/officer')
 const queryRoutes = require('./routes/queries')
+const notificationRoutes = require('./routes/notifications')
 const { sendError, httpError } = require('./utils/http')
 
 const app = express()
@@ -22,6 +23,7 @@ app.use('/api/auth', authRoutes)
 app.use('/api/startups', startupRoutes)
 app.use('/api/applications', applicationRoutes)
 app.use('/api', queryRoutes)
+app.use('/api/notifications', notificationRoutes)
 app.use('/api/officer', officerRoutes)
 app.use('/api/resources', resourceRoutes)
 

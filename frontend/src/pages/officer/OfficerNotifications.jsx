@@ -1,7 +1,9 @@
+import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Bell, CheckCircle, AlertCircle, FileText, Info, BellOff } from 'lucide-react';
 import { useNotifications } from '../../context/NotificationContext';
+import { useAuth } from '../../context/AuthContext';
 import EmptyState from '../../components/common/EmptyState';
 import PageTransition from '../../layouts/PageTransition';
 import { formatRelativeTime } from '../../utils/helpers';
@@ -11,11 +13,19 @@ const typeColors = { status_update: 'bg-success/10 text-success', document_verif
 
 export default function OfficerNotifications() {
   const navigate = useNavigate();
-  const { notifications, markAsRead, markAllAsRead, unreadCount } = useNotifications();
+  const { user } = useAuth();
+  const { notifications, notificationsLoading, notificationsError, refreshNotifications, markAsRead, markAllAsRead, unreadCount } = useNotifications();
 
-  const handleClick = (notif) => {
-    markAsRead(notif.id);
-    if (notif.applicationId) navigate(`/officer/applications/${notif.applicationId}`);
+  useEffect(() => {
+    refreshNotifications();
+  }, [refreshNotifications]);
+
+  const handleClick = async (notif) => {
+    if (!notif.read && !(await markAsRead(notif.id))) return;
+    if (notif.applicationId) {
+      const applicationPath = user?.role === 'admin' ? '/admin/applications' : '/officer/applications';
+      navigate(`${applicationPath}/${notif.applicationId}`);
+    }
   };
 
   return (
@@ -29,7 +39,16 @@ export default function OfficerNotifications() {
           {unreadCount > 0 && <button onClick={markAllAsRead} className="btn-ghost text-sm">Mark all as read</button>}
         </div>
 
-        {notifications.length > 0 ? (
+        {notificationsError && (
+          <div className="rounded-lg border border-error/20 bg-error/5 px-4 py-3 flex items-center justify-between gap-3">
+            <p role="alert" className="text-sm text-error">{notificationsError}</p>
+            <button onClick={refreshNotifications} className="btn-ghost text-sm shrink-0">Retry</button>
+          </div>
+        )}
+
+        {notificationsLoading ? (
+          <div role="status" className="card p-8 text-center text-sm text-text-secondary">Loading notifications…</div>
+        ) : notifications.length > 0 ? (
           <div className="space-y-2">
             {notifications.map((notif, i) => {
               const Icon = typeIcons[notif.type] || Bell;

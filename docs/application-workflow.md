@@ -1,6 +1,6 @@
 # Application Workflow and Lifecycle Specification
 
-This describes the target lifecycle and the connected workflow. Live startup accounts use the backend for application list/detail, draft create/edit, submission, and clarification responses/resubmission. Officers use an assigned review queue, and admins can view the non-draft queue and assign officers. Review start, approve/reject decisions, and clarification raise/list/resolve actions are connected and recorded by the API. Demo accounts keep the local mock flow. Document upload/verification and notification screens/APIs are not connected end to end. Portal outcomes are internal workflow decisions and must not be described as statutory AYUSH licences or regulatory approvals. See [implementation-status.md](./implementation-status.md).
+This describes the target lifecycle and the connected workflow. Live startup accounts use the backend for application list/detail, draft create/edit, submission, clarification responses/resubmission, and notification list/read actions. Officers use an assigned review queue, and admins can view the non-draft queue and assign officers. Review start, approve/reject decisions, clarification raise/list/resolve, and notification list/read actions are connected for live API sessions. Demo accounts keep the local mock flow. Document upload/verification is not connected end to end. Portal outcomes are internal workflow decisions and must not be described as statutory AYUSH licences or regulatory approvals. See [implementation-status.md](./implementation-status.md).
 
 ## 1. Introduction
 
@@ -39,7 +39,7 @@ The target **AYUSH Startup Registration Portal** follows a structured, transpare
 1. **Review Summary**: The applicant reviews an aggregated preview of the complete application and attached documents.
 2. **Legal Undertaking & Declaration**: The applicant confirms that all provided information is accurate and compliant with Ministry of AYUSH norms.
 3. **Submission**: The application state transitions from `DRAFT` to `SUBMITTED`.
-4. **Tracking ID Generation**: The backend assigns a unique tracking number in the contract format `APP-YYYY-NNN` and stores a submission notification record. The in-app notification list/read flow is not connected. The frontend demo must not fabricate the server ID. The application is then locked against direct edits.
+4. **Tracking ID Generation**: The backend assigns a unique tracking number in the contract format `APP-YYYY-NNN` and stores a submission notification record. Live users can view it in their notification center and mark notifications as read. The frontend demo must not fabricate the server ID. The application is then locked against direct edits.
 
 ### Stage 5: Reviewer Queue & Evaluation
 1. **Reviewer Inbox**: The API queue excludes drafts. An officer sees applications assigned to their account; an administrator sees all non-draft applications.
@@ -61,7 +61,7 @@ If discrepancies, unreadable files, or missing information are discovered:
 1. **Approval Path**:
    - The reviewer verifies full compliance and approves the application.
    - The status updates to `APPROVED`.
-   - The portal records the application outcome as `APPROVED` and inserts a status-update notification record for the applicant. Notification list/read APIs and screens are not yet connected.
+   - The portal records the application outcome as `APPROVED` and inserts a status-update notification record for the applicant. Live users can read the notification in the portal and mark it read.
    - If a portal acknowledgement is later included in scope, it must be labeled as an internal administrative record and must not imply statutory licensing, regulatory approval, or legal certification.
 2. **Rejection Path**:
    - If the application fails fundamental regulatory criteria or fraudulent documents are detected, the reviewer rejects the submission.
@@ -71,7 +71,7 @@ If discrepancies, unreadable files, or missing information are discovered:
 ### Stage 8: Real-Time Status Tracking & Notifications
 - Throughout the process, the applicant tracks progress via a dynamic status timeline.
 - Every state transition generates:
-  - A status-update notification record for submission and final decisions. The full in-app notification workflow is not yet connected.
+  - A status-update notification record for submission and final decisions. Live startup, officer, and admin sessions can list their notifications and mark one or all as read.
   - An immutable entry in the `ApplicationStatusHistory` audit table.
 
 ---

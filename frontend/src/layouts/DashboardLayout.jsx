@@ -47,6 +47,7 @@ const sidebarNav = {
   admin: [
     { to: '/admin/dashboard', label: 'Overview', icon: LayoutDashboard, end: true },
     { to: '/admin/applications', label: 'Applications', icon: ClipboardList },
+    { to: '/admin/notifications', label: 'Notifications', icon: BellRing },
     { to: '/admin/users', label: 'Users', icon: Users },
     { to: '/admin/officers', label: 'Officers', icon: Shield },
     { to: '/admin/categories', label: 'Categories', icon: Tag },
@@ -307,7 +308,7 @@ export default function DashboardLayout({ role = 'startup' }) {
                     ? '/dashboard/notifications'
                     : role === 'officer'
                     ? '/officer/notifications'
-                    : '/admin/dashboard';
+                    : '/admin/notifications';
                 navigate(notifPath);
               }}
               className="relative flex h-9 w-9 items-center justify-center rounded-full text-[#6B756F] hover:bg-gray-100 hover:text-[#202A25] transition-colors"

@@ -12,9 +12,9 @@ The API proposal and endpoint ownership are detailed in [api-contract.md](./api-
 
 ## Arnav
 
-**Implemented in the repository:** real login, registration, logout, and session restoration use the auth API; API roles are normalized for React, and the bearer token is stored for protected requests. Startup profile display and applicant application list, detail, draft creation/editing, and submission use the backend for live accounts, including server-issued tracking IDs. Startup detail screens support clarification query listing, responding, and resubmitting. Officer accounts load their assigned queue and use the review-start, decision, and clarification APIs; the review screen supports raising and resolving queries. Admin accounts load the non-draft queue, assign officers, and can open the review screen. Demo role sign-in and demo workflows remain local. Notification, document, admin account-management, and analytics workflows are not yet connected.
+**Implemented in the repository:** real login, registration, logout, and session restoration use the auth API; API roles are normalized for React, and the bearer token is stored for protected requests. Startup profile display and applicant application list, detail, draft creation/editing, and submission use the backend for live accounts, including server-issued tracking IDs. Startup detail screens support clarification query listing, responding, and resubmitting. Officer accounts load their assigned queue and use the review-start, decision, and clarification APIs; the review screen supports raising and resolving queries. Admin accounts load the non-draft queue, assign officers, and can open the review screen. Startup, officer, and admin sessions load and update notifications through the API. Demo role sign-in and demo workflows remain local. Document, admin account-management, and analytics workflows are not yet connected.
 
-**Remaining:** implement notification APIs and connect their screens; collaborate with Prakhar on end-to-end workflow verification. Document upload/verification remains unassigned and requires coordination before its API and storage flow is built.
+**Remaining:** collaborate with Prakhar on end-to-end workflow verification. Document upload/verification remains unassigned and requires coordination before its API and storage flow is built.
 
 ## Sarth
 

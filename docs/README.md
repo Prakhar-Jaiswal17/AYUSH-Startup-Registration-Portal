@@ -4,7 +4,7 @@ This directory contains the project requirements, design documents, current impl
 
 ## Current status
 
-The repository has PostgreSQL/Prisma persistence foundations, core auth/startup/application APIs, and a tested resources API consumed by the public and startup resource pages. Live applicant flows are connected. Officer/admin review queues, assignment, review start, decisions, and clarification query workflows are connected for API sessions. Notification screens/APIs, document, admin account-management, and analytics integrations remain incomplete. Demo workflows remain local. The Electron app launches the same website in a native development window; it is not a packaged release. See [implementation-status.md](./implementation-status.md) for details and verification.
+The repository has PostgreSQL/Prisma persistence foundations, core auth/startup/application APIs, and a tested resources API consumed by the public and startup resource pages. Live applicant flows are connected. Officer/admin review queues, assignment, review start, decisions, clarification query workflows, and notification list/read flows are connected for API sessions. Document, admin account-management, and analytics integrations remain incomplete. Demo workflows remain local. The Electron app launches the same website in a native development window; it is not a packaged release. See [implementation-status.md](./implementation-status.md) for details and verification.
 
 ## Project and team
 
