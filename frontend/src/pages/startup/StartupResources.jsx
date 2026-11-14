@@ -30,6 +30,7 @@ export default function StartupResources() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [category, setCategory] = useState('All');
+  const [sortBy, setSortBy] = useState('default');
   const [page, setPage] = useState(1);
   const [resources, setResources] = useState([]);
   const [pagination, setPagination] = useState({
@@ -66,6 +67,16 @@ export default function StartupResources() {
     }
     if (debouncedSearch.trim()) {
       params.search = debouncedSearch.trim();
+    }
+    if (sortBy === 'title-asc') {
+      params.sortBy = 'title';
+      params.order = 'asc';
+    } else if (sortBy === 'title-desc') {
+      params.sortBy = 'title';
+      params.order = 'desc';
+    } else if (sortBy === 'category') {
+      params.sortBy = 'category';
+      params.order = 'asc';
     }
 
     resourceAPI
@@ -115,6 +126,7 @@ export default function StartupResources() {
     setSearch('');
     setDebouncedSearch('');
     setCategory('All');
+    setSortBy('default');
     setPage(1);
   };
 
@@ -140,6 +152,19 @@ export default function StartupResources() {
               className="input-field pl-10"
             />
           </div>
+          <select
+            value={sortBy}
+            onChange={(e) => {
+              setSortBy(e.target.value);
+              setPage(1);
+            }}
+            className="input-field w-auto text-xs py-1.5 px-3 text-text-secondary bg-white border border-border rounded-lg"
+          >
+            <option value="default">Default Order</option>
+            <option value="title-asc">Title (A → Z)</option>
+            <option value="title-desc">Title (Z → A)</option>
+            <option value="category">Category</option>
+          </select>
           <div className="flex gap-2 overflow-x-auto pb-1">
             {categories.map((c) => (
               <button
