@@ -2,14 +2,14 @@
 
 An academic prototype for handling AYUSH startup application intake and review. It is built as part of the Advanced Software Development and Database Management Systems curriculum. This repository is not an official Ministry of AYUSH or All India Institute of Ayurveda service.
 
-The project contains a React website, a development Electron launcher, an Express API, and a PostgreSQL database managed with Prisma. See [docs/implementation-status.md](./docs/implementation-status.md) for the current verified implementation and [docs/team-roles.md](./docs/team-roles.md) for the team's remaining work.
+The project contains a React website, a packaged Electron desktop app, an Express API, and a PostgreSQL database managed with Prisma. See [docs/implementation-status.md](./docs/implementation-status.md) for the current verified implementation and [docs/team-roles.md](./docs/team-roles.md) for the team's remaining work.
 
 ## Current implementation
 
 - **Database:** PostgreSQL design mapped to Prisma models and versioned migrations. The backend has a Prisma seed command for missing AYUSH category rows. See [database setup](./database/README.md).
-- **Backend:** CommonJS Express API with health, bcrypt/JWT authentication, startup profile, core application draft/read/update/submit/status-history, and public static resources routes.
-- **Website:** Public and startup resource pages use the backend resources API, including loading/error/empty states, search, category filtering, and pagination. Most authentication, profile, application, document, officer, and admin screens still use mock data or are not connected to backend workflows.
-- **Desktop:** Electron opens the same React/Vite website in a native window. It is a development launcher, not a packaged installer, and inherits the website's current mock-backed workflows.
+- **Backend:** CommonJS Express API with health, bcrypt/JWT authentication (30-day sign-in sessions), startup profile and application workflows, officer review, clarification queries, notifications, categories, admin account management, audit logs, and public static resources. Account role changes and deletions are checked against the database on authenticated requests.
+- **Website:** Live API sessions use backend auth, startup profile/application flows, officer/admin review, queries, notifications, categories, admin account creation, role filtering, role changes, deletion, and reporting screens. The resource area includes search highlighting, filters, working sort controls, bookmarks, copy-link, and CSV/JSON export. Demo role sign-in and demo workflows remain local. Document upload/verification is not connected.
+- **Desktop:** Electron packages and opens the same React website in a native window. Development launch and macOS/Windows/Linux packaging scripts are available; it inherits the website's live API sessions and local demo behavior. The Express API and PostgreSQL still run separately.
 
 The portal may record an application's workflow status. It does not issue statutory AYUSH licences, regulatory approvals, or legal certifications.
 
@@ -25,7 +25,7 @@ The portal may record an application's workflow status. It does not issue statut
 ```text
 frontend/       React/Vite website
 backend/        Express API, Prisma schema, migrations, seed, and API checks
-desk_App/       Electron development launcher
+desk_App/       Electron desktop app and packaging configuration
 database/       Standalone PostgreSQL schema, seed, queries, and setup guide
 docs/           Requirements, architecture, workflow, API contract, and status
 ```
@@ -54,7 +54,7 @@ npm install
 npm run dev
 ```
 
-For desktop setup and launch instructions, see [desk_App/README.md](./desk_App/README.md). The frontend and desktop launcher currently need frontend dependencies installed separately.
+For desktop setup, development launch, and packaging instructions, see [desk_App/README.md](./desk_App/README.md). The frontend dependencies must be installed separately before building the desktop package.
 
 ## Documentation
 

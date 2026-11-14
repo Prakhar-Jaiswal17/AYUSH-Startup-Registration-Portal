@@ -1,9 +1,33 @@
 {
   "name": "ayush-portal-desktop",
   "version": "1.0.0",
+  "author": "AYUSH Setu Team",
   "private": true,
   "description": "Electron desktop companion for the AYUSH Startup Registration Portal",
   "main": "main.js",
-  "scripts": { "start": "electron ." },
-  "devDependencies": { "electron": "^35.0.0" }
+  "engines": { "node": ">=20.11.0" },
+  "scripts": {
+    "start": "electron .",
+    "build:web": "node build-web.js",
+    "pack": "npm run build:web && node package-desktop.js --dir",
+    "dist": "npm run build:web && node package-desktop.js",
+    "dist:mac": "npm run build:web && node package-desktop.js --mac zip",
+    "dist:mac:dmg": "npm run build:web && node package-desktop.js --mac dmg",
+    "dist:win": "npm run build:web && node package-desktop.js --win",
+    "dist:linux": "npm run build:web && node package-desktop.js --linux"
+  },
+  "devDependencies": {
+    "electron": "^45.3.2",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "in.ayushsetu.portal.desktop",
+    "productName": "AYUSH Setu Desktop",
+    "directories": { "output": "release" },
+    "files": ["main.js", "preload.js", "package.json"],
+    "extraResources": [{ "from": "web-dist", "to": "web" }],
+    "mac": { "target": ["dmg", "zip"] },
+    "win": { "target": ["nsis"] },
+    "linux": { "target": ["AppImage"] }
+  }
 }

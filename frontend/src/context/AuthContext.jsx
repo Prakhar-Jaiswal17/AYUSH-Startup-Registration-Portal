@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { mockUsers, mockStartups } from '../data/mockData';
 import { authAPI, getApiErrorMessage, startupAPI } from '../services/api';
 
@@ -63,6 +63,18 @@ function authError(error, fallback) {
   return new Error(error?.apiMessage || getApiErrorMessage(error, fallback));
 }
 
+function getTokenExpiry(token) {
+  try {
+    const encodedPayload = token.split('.')[1];
+    if (!encodedPayload) return null;
+    const base64 = encodedPayload.replace(/-/g, '+').replace(/_/g, '/');
+    const payload = JSON.parse(atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, '=')));
+    return Number.isFinite(payload.exp) ? payload.exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [startup, setStartup] = useState(null);
@@ -70,13 +82,17 @@ export function AuthProvider({ children }) {
   const [startupLoading, setStartupLoading] = useState(false);
   const [startupError, setStartupError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [apiSessionToken, setApiSessionToken] = useState(null);
+  const authRevisionRef = useRef(0);
 
   useEffect(() => {
     let active = true;
     const handleExpiredSession = () => {
+      authRevisionRef.current += 1;
       setUser(null);
       setStartup(null);
       setIsApiSession(false);
+      setApiSessionToken(null);
       setStartupError('');
       setLoading(false);
       localStorage.removeItem(STORAGE_KEY);
@@ -85,35 +101,41 @@ export function AuthProvider({ children }) {
     window.addEventListener('ayush:auth-expired', handleExpiredSession);
 
     const restoreSession = async () => {
+      const revision = authRevisionRef.current;
+      const isCurrentRestore = () => active && revision === authRevisionRef.current;
       const stored = getStoredSession();
       const token = localStorage.getItem(TOKEN_KEY);
 
       if (token) {
         try {
           const apiUser = normalizeApiUser(readResponseData(await authAPI.getProfile()));
-          if (active) {
+          if (isCurrentRestore()) {
             setUser(apiUser);
             setStartupLoading(true);
             setIsApiSession(true);
+            setApiSessionToken(token);
             localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: apiUser, source: 'api' }));
           }
         } catch (error) {
+          if (!isCurrentRestore()) return;
           if (error?.response?.status === 401) {
             localStorage.removeItem(TOKEN_KEY);
             localStorage.removeItem(STORAGE_KEY);
-            if (active) {
+            if (isCurrentRestore()) {
               setUser(null);
               setStartup(null);
               setIsApiSession(false);
+              setApiSessionToken(null);
             }
           } else if (stored?.source === 'api' && stored.user) {
             // Keep the cached UI session during a temporary network/server outage.
             try {
               const cachedUser = normalizeApiUser(stored.user);
-              if (active) {
+              if (isCurrentRestore()) {
                 setUser(cachedUser);
                 setStartupLoading(true);
                 setIsApiSession(true);
+                setApiSessionToken(token);
               }
             } catch {
               localStorage.removeItem(STORAGE_KEY);
@@ -124,9 +146,10 @@ export function AuthProvider({ children }) {
         (stored?.source === 'demo' || !stored?.source)
         && mockUsers.some((demoUser) => demoUser.id === stored.user?.id)
       ) {
-        if (active) {
+        if (isCurrentRestore()) {
           setUser(stored.user);
           setIsApiSession(false);
+          setApiSessionToken(null);
           setStartup(cachedDemoStartup(stored.user));
         }
       } else if (stored?.source === 'api') {
@@ -134,7 +157,7 @@ export function AuthProvider({ children }) {
         localStorage.removeItem(STORAGE_KEY);
       }
 
-      if (active) setLoading(false);
+      if (isCurrentRestore()) setLoading(false);
     };
 
     restoreSession();
@@ -143,6 +166,31 @@ export function AuthProvider({ children }) {
       window.removeEventListener('ayush:auth-expired', handleExpiredSession);
     };
   }, []);
+
+  useEffect(() => {
+    if (!isApiSession || !apiSessionToken) return undefined;
+
+    const expiresAt = getTokenExpiry(apiSessionToken);
+    if (!expiresAt) {
+      window.dispatchEvent(new Event('ayush:auth-expired'));
+      return undefined;
+    }
+
+    let timerId;
+    const checkExpiry = () => {
+      if (localStorage.getItem(TOKEN_KEY) !== apiSessionToken) return;
+      const remaining = expiresAt - Date.now();
+      if (remaining <= 0) {
+        window.dispatchEvent(new Event('ayush:auth-expired'));
+        return;
+      }
+      // Browser timers have a maximum delay of roughly 24.8 days.
+      timerId = window.setTimeout(checkExpiry, Math.min(remaining, 2_147_000_000));
+    };
+
+    checkExpiry();
+    return () => window.clearTimeout(timerId);
+  }, [apiSessionToken, isApiSession]);
 
   const refreshStartupProfile = useCallback(async () => {
     if (!isApiSession || user?.role !== 'startup') return null;
@@ -185,9 +233,12 @@ export function AuthProvider({ children }) {
       const response = await authAPI.login({ email, password });
       const payload = readResponseData(response);
       const authenticatedUser = storeApiSession(payload.token, payload.user);
+      authRevisionRef.current += 1;
       setUser(authenticatedUser);
+      setLoading(false);
       setStartupLoading(true);
       setIsApiSession(true);
+      setApiSessionToken(payload.token);
       setStartup(null);
       return authenticatedUser;
     } catch (error) {
@@ -200,9 +251,12 @@ export function AuthProvider({ children }) {
       const response = await authAPI.register(userData);
       const payload = readResponseData(response);
       const authenticatedUser = storeApiSession(payload.token, payload.user);
+      authRevisionRef.current += 1;
       setUser(authenticatedUser);
+      setLoading(false);
       setStartupLoading(true);
       setIsApiSession(true);
+      setApiSessionToken(payload.token);
       setStartup(null);
       return authenticatedUser;
     } catch (error) {
@@ -211,6 +265,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(async () => {
+    authRevisionRef.current += 1;
     const token = localStorage.getItem(TOKEN_KEY);
     let logoutRequest = null;
 
@@ -226,6 +281,7 @@ export function AuthProvider({ children }) {
     setUser(null);
     setStartup(null);
     setIsApiSession(false);
+    setApiSessionToken(null);
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(TOKEN_KEY);
 
@@ -244,10 +300,13 @@ export function AuthProvider({ children }) {
 
     const demoUser = { ...found };
     delete demoUser.password;
+    authRevisionRef.current += 1;
     localStorage.removeItem(TOKEN_KEY);
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: demoUser, source: 'demo' }));
     setUser(demoUser);
+    setLoading(false);
     setIsApiSession(false);
+    setApiSessionToken(null);
     setStartup(cachedDemoStartup(demoUser));
     return demoUser;
   }, []);

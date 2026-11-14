@@ -20,7 +20,9 @@ function getInitialData(storageKey, fallback) {
   }
   try {
     localStorage.setItem(storageKey, JSON.stringify(fallback));
-  } catch {}
+  } catch {
+    // Local storage can be unavailable in restricted browser contexts.
+  }
   return fallback;
 }
 

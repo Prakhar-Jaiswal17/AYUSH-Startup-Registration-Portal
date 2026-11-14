@@ -14,6 +14,7 @@ function sendError(res, error) {
     let message = error.type === 'entity.parse.failed' ? 'Request body contains invalid JSON.' : error.message
     if (error.code === 'P2002') { status = 409; message = 'A record with this value already exists.' }
     if (error.code === 'P2025') { status = 404; message = 'Record not found.' }
+    if (error.code === 'P2034') { status = 409; message = 'This account changed at the same time as another request. Reload the page and try again.' }
     if (status >= 500) {
         console.error(error)
         message = 'An unexpected server error occurred.'

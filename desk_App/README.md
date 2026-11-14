@@ -1,33 +1,66 @@
 # AYUSH Setu Desktop
 
-An Electron desktop version of the AYUSH Startup Registration Portal. Electron opens the existing React website in a desktop window and starts its Vite development server automatically. The website source remains in `frontend/` and is not modified by this desktop setup.
+AYUSH Setu Desktop is the Electron desktop edition of the existing React portal. It displays the same application screens and uses the same backend API. There is one frontend codebase: this folder wraps and packages `../frontend` without changing its source files.
 
-## Current scope
+## Requirements
 
-- The same public pages, startup registration, and application screens as the website.
-- The same startup, officer, and admin demo sign-in flows and dashboards.
-- The same React routes, mock data, and browser-storage behavior.
-- A native Electron window with context isolation and Node integration disabled.
+- Node.js and npm
+- Install frontend dependencies once from `../frontend` with `npm install`
+- For real registration, sign-in, and saved records: start the PostgreSQL database and Express backend as described in the root README and backend documentation
 
-The Express backend now implements `GET /api/health`, bcrypt/JWT authentication, startup profile APIs, core application draft/read/update/submit/status-history APIs, and public static resources. Document upload, query, officer, notification, admin, and category APIs remain unfinished. The React auth and application contexts are still mock-backed and do not call the implemented backend routes, so the desktop app also uses the website's mock/demo behavior and does not synchronize records with PostgreSQL. The portal does not issue statutory AYUSH licences or approvals.
+The packaged desktop app includes the built React website, but does not bundle PostgreSQL or the Express backend. It can open the site without the backend, but live data features require the backend to be running at the API address configured when the website is built. Demo flows use the same browser-based demo data as the website. The portal is an application and review workflow; it does not issue statutory AYUSH licences or approvals.
 
-## Run locally
+## Run the desktop app during development
 
-Requires Node.js and npm. From this directory:
+In a terminal, go to this folder and run:
 
 ```bash
 npm install
 npm start
 ```
 
-The desktop app starts the website's Vite server on `127.0.0.1:5173` and opens it in Electron. Frontend dependencies must already be installed in `frontend/` (`npm install` there, if needed). Close Electron to stop the Vite server it started. If the website is already running on that address, Electron reuses it.
+Electron starts the Vite server for `../frontend` on `127.0.0.1:5173` and opens it in a desktop window. It reuses an existing AYUSH Vite server at that address. If an unrelated service is using the port, close that service and try again. Closing the desktop app stops the Vite process that Electron started.
 
-Sign-in and registration have the same demo behavior as the website. Backend auth and core application APIs are available for direct API testing, but the website and desktop UI are not connected to them yet. Application data remains mock/local and is not synchronized with PostgreSQL.
+## Build an installable app
 
-## Security notes
+Build on the operating system you want to distribute for. First install frontend dependencies as above, then install Electron's packaging dependencies in this folder:
 
-Electron uses context isolation, a sandboxed renderer, and disabled Node integration. The website renderer has no direct Node or filesystem access. Its demo data uses Chromium browser storage, as it does in the website.
+```bash
+npm install
+```
 
-## Next integration step
+On macOS (creates a ZIP containing the `.app`):
 
-Next, connect the website's auth, application, and startup contexts to the implemented APIs. Then add the remaining document/query/officer/admin APIs and their UI integrations. Electron will inherit those changes because it displays the same React website; confirm the desktop origin remains allowed by backend CORS.
+```bash
+npm run dist:mac
+```
+
+To create a DMG disk image instead, run `npm run dist:mac:dmg`. DMG creation requires macOS disk image support; the automated build environment used for this project could not create one, so the ZIP is the verified macOS artifact.
+
+On Windows:
+
+```bash
+npm run dist:win
+```
+
+On Linux:
+
+```bash
+npm run dist:linux
+```
+
+Installers and archives are written to `desk_App/release/`. The website build is generated in the ignored `desk_App/web-dist/` folder and copied into the desktop package. `npm run pack` creates an unpacked test build. `npm run dist` builds a package for the current operating system.
+
+For a demo with working live data, start PostgreSQL and the backend first, then open the desktop application. Ensure the backend CORS configuration allows `http://127.0.0.1:5173` and that the frontend build points to the correct API URL. Do not put database passwords, signing keys, or other secrets in the frontend environment: frontend build variables are included in the app and visible to users.
+
+## Desktop behavior and security
+
+- The desktop app loads the same React website as the browser version.
+- The renderer has context isolation and sandboxing enabled, with Node integration disabled.
+- External HTTPS links open in the system browser; navigation away from the local portal is blocked inside the app.
+- The production desktop app serves the built website only on the loopback interface at port 5173, matching the backend's existing CORS allowlist.
+- Existing `index.html`, `renderer.js`, and `styles.css` files are an earlier standalone mockup. The current Electron launcher does not load them; the packaged app uses the React site instead.
+
+## Current integration limits
+
+Desktop screens and workflows match the current website. The desktop packaging does not add separate backend features. Any limitation in the web app or API (including document upload/verification, if not implemented there) also applies in the desktop app. Validate startup, officer, and admin flows against the team's running database before presenting or distributing the app.

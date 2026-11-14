@@ -38,7 +38,10 @@ export function exportResourcesToCSV(resources, filename = 'ayush-resources.csv'
 
 function escapeCSV(str) {
   if (str === null || str === undefined) return '""';
-  const text = String(str).replace(/"/g, '""');
+  const value = String(str);
+  // Prefix spreadsheet formula markers so exported text is not evaluated as a formula.
+  const safeValue = /^[\s]*[=+\-@]/.test(value) ? `'${value}` : value;
+  const text = safeValue.replace(/"/g, '""');
   return `"${text}"`;
 }
 
@@ -50,5 +53,5 @@ function triggerDownload(blob, filename) {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

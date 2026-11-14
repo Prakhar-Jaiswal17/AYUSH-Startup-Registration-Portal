@@ -58,12 +58,11 @@ export default function OfficerApplications() {
   const [page, setPage] = useState(1);
 
   // Safe base array
-  const rawList = Array.isArray(applications) ? applications : [];
+  const rawList = useMemo(() => (Array.isArray(applications) ? applications : []), [applications]);
 
   // Metrics counts
   const totalCount = rawList.length;
   const submittedCount = rawList.filter(a => a?.status === 'Submitted').length;
-  const underReviewCount = rawList.filter(a => a?.status === 'Under Review').length;
   const clarificationCount = rawList.filter(a => a?.status === 'Clarification Required').length;
   const myAssignedCount = rawList.filter(a => a?.assignedOfficer === user?.id).length;
 

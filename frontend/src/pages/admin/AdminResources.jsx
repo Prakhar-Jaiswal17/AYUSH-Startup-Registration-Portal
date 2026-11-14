@@ -1,30 +1,50 @@
 import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Plus, ExternalLink, BookOpen, Trash2, Edit2, Download } from 'lucide-react';
+import { Search, Plus, ExternalLink, BookOpen, Trash2, Download, AlertCircle, RefreshCw } from 'lucide-react';
 import { mockResources } from '../../data/mockData';
-import { resourceAPI } from '../../services/api';
+import { getApiErrorMessage, resourceAPI } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import { exportResourcesToCSV, exportResourcesToJSON } from '../../utils/resourceExporter';
 import Modal from '../../components/common/Modal';
 import PageTransition from '../../layouts/PageTransition';
 
-const categories = ['All', 'Government Portal', 'Startup Support', 'Research', 'Regulatory', 'Guide'];
+const categories = ['All', 'Government Portal', 'Startup Support', 'Research', 'Regulatory', 'Guide', 'Government Scheme'];
 
 export default function AdminResources() {
+  const { isApiSession } = useAuth();
   const [resources, setResources] = useState(mockResources);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const [reloadTrigger, setReloadTrigger] = useState(0);
 
   useEffect(() => {
+    if (!isApiSession) {
+      setResources(mockResources);
+      setLoading(false);
+      setLoadError('');
+      return undefined;
+    }
+
+    let active = true;
+    setLoading(true);
+    setLoadError('');
     resourceAPI.getAll({ limit: 50 }).then((res) => {
       const items = res?.data?.data?.items;
-      if (Array.isArray(items) && items.length > 0) {
-        setResources(items);
-      }
-    }).catch(() => {
-      // Fallback stays as mockResources
+      if (!Array.isArray(items)) throw new Error('The resources service returned an unexpected response.');
+      if (active) setResources(items);
+    }).catch((error) => {
+      if (!active) return;
+      setResources([]);
+      setLoadError(getApiErrorMessage(error, 'Unable to load the curated resources.'));
+    }).finally(() => {
+      if (active) setLoading(false);
     });
-  }, []);
+
+    return () => { active = false; };
+  }, [isApiSession, reloadTrigger]);
   const [newResource, setNewResource] = useState({
     title: '',
     description: '',
@@ -35,7 +55,8 @@ export default function AdminResources() {
 
   const filtered = useMemo(() => {
     return resources.filter(r => {
-      const matchSearch = !search || r.title.toLowerCase().includes(search.toLowerCase()) || r.description.toLowerCase().includes(search.toLowerCase());
+      const searchableText = `${r.title || ''} ${r.description || r.summary || ''}`.toLowerCase();
+      const matchSearch = !search || searchableText.includes(search.toLowerCase());
       const matchCat = categoryFilter === 'All' || r.category === categoryFilter;
       return matchSearch && matchCat;
     });
@@ -43,6 +64,7 @@ export default function AdminResources() {
 
   const handleAdd = (e) => {
     e.preventDefault();
+    if (isApiSession) return;
     if (!newResource.title.trim()) return;
     const added = {
       id: `res_${Date.now()}`,
@@ -60,7 +82,7 @@ export default function AdminResources() {
   };
 
   const handleDelete = (id) => {
-    if (confirm('Are you sure you want to delete this resource?')) {
+    if (!isApiSession && window.confirm('Are you sure you want to remove this demo resource?')) {
       setResources(resources.filter(r => r.id !== id));
     }
   };
@@ -70,12 +92,17 @@ export default function AdminResources() {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-text-primary">Resource Management</h1>
-            <p className="text-text-secondary text-sm mt-1">Configure guidance materials, official government links, and knowledge base resources.</p>
+            <h1 className="text-2xl font-bold text-text-primary">Resource Directory</h1>
+            <p className="text-text-secondary text-sm mt-1">
+              {isApiSession
+                ? 'Browse and export the curated guidance materials and official portal links.'
+                : 'Preview resource management controls. Demo changes are temporary and are not saved to the server.'}
+            </p>
           </div>
           <div className="flex items-center gap-2 self-start flex-wrap">
             <button
               onClick={() => exportResourcesToCSV(resources)}
+              disabled={loading || resources.length === 0}
               className="btn-outline text-xs inline-flex items-center gap-1.5"
               title="Download resources list as CSV"
             >
@@ -83,14 +110,17 @@ export default function AdminResources() {
             </button>
             <button
               onClick={() => exportResourcesToJSON(resources)}
+              disabled={loading || resources.length === 0}
               className="btn-outline text-xs inline-flex items-center gap-1.5"
               title="Download resources list as JSON"
             >
               <Download className="w-3.5 h-3.5" /> Export JSON
             </button>
-            <button onClick={() => setShowAddModal(true)} className="btn-primary text-xs inline-flex items-center gap-2">
-              <Plus className="w-4 h-4" /> Add Resource
-            </button>
+            {!isApiSession && (
+              <button onClick={() => setShowAddModal(true)} className="btn-primary text-xs inline-flex items-center gap-2">
+                <Plus className="w-4 h-4" /> Add Demo Resource
+              </button>
+            )}
           </div>
         </div>
 
@@ -100,6 +130,7 @@ export default function AdminResources() {
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
             <input
               type="text"
+              aria-label="Search resources"
               placeholder="Search resources..."
               value={search}
               onChange={e => setSearch(e.target.value)}
@@ -107,6 +138,7 @@ export default function AdminResources() {
             />
           </div>
           <select
+            aria-label="Filter resources by category"
             value={categoryFilter}
             onChange={e => setCategoryFilter(e.target.value)}
             className="input-field w-auto"
@@ -117,8 +149,21 @@ export default function AdminResources() {
           </select>
         </div>
 
+        {loadError && (
+          <div role="alert" className="card p-5 border-red-200 bg-red-50/50 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 text-sm text-error"><AlertCircle className="w-5 h-5 shrink-0" />{loadError}</div>
+            <button type="button" onClick={() => setReloadTrigger((value) => value + 1)} className="btn-outline text-xs inline-flex items-center gap-2">
+              <RefreshCw className="w-3.5 h-3.5" /> Retry
+            </button>
+          </div>
+        )}
+
+        {loading && <p role="status" className="text-center text-sm text-text-secondary">Loading curated resources…</p>}
+
         {/* Resources Grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {!loading && !loadError && (
+          <>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((res, i) => (
             <motion.div
               key={res.id}
@@ -132,16 +177,20 @@ export default function AdminResources() {
                   <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary font-medium rounded-full">
                     {res.category}
                   </span>
-                  <button
-                    onClick={() => handleDelete(res.id)}
-                    className="p-1 text-text-secondary hover:text-error transition-colors"
-                    title="Delete Resource"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {!isApiSession && (
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(res.id)}
+                      aria-label={`Remove demo resource: ${res.title}`}
+                      className="p-1 text-text-secondary hover:text-error transition-colors"
+                      title="Remove demo resource"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
                 <h3 className="font-semibold text-text-primary text-base mb-1">{res.title}</h3>
-                <p className="text-sm text-text-secondary line-clamp-3 mb-4">{res.description}</p>
+                <p className="text-sm text-text-secondary line-clamp-3 mb-4">{res.description || res.summary}</p>
               </div>
 
               <div className="pt-3 border-t border-border-light flex items-center justify-between text-xs">
@@ -159,7 +208,7 @@ export default function AdminResources() {
               </div>
             </motion.div>
           ))}
-        </div>
+          </div>
 
         {filtered.length === 0 && (
           <div className="text-center py-12 card">
@@ -167,9 +216,11 @@ export default function AdminResources() {
             <p className="text-text-secondary">No resources found matching the criteria.</p>
           </div>
         )}
+          </>
+        )}
 
         {/* Add Modal */}
-        <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Add Resource">
+        {!isApiSession && <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Add Demo Resource">
           <form onSubmit={handleAdd} className="space-y-4">
             <div>
               <label className="label">Resource Title</label>
@@ -235,7 +286,7 @@ export default function AdminResources() {
               </button>
             </div>
           </form>
-        </Modal>
+        </Modal>}
       </div>
     </PageTransition>
   );

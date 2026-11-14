@@ -32,10 +32,16 @@ function request(path) {
 async function runTests() {
   console.log('🧪 Starting Resources API Test Suite...\n');
 
-  await new Promise((resolve) => {
-    server = app.listen(0, () => {
-      const port = server.address().port;
-      baseUrl = `http://localhost:${port}`;
+  await new Promise((resolve, reject) => {
+    server = app.listen(0, '127.0.0.1');
+    server.once('error', reject);
+    server.once('listening', () => {
+      const address = server.address();
+      if (!address || typeof address === 'string') {
+        reject(new Error('The resource test server did not provide a TCP port.'));
+        return;
+      }
+      baseUrl = `http://127.0.0.1:${address.port}`;
       resolve();
     });
   });
@@ -181,7 +187,13 @@ async function runTests() {
     const titlesDesc = res12Desc.body.data.items.map((i) => i.title);
     const sortedTitlesDesc = [...titlesDesc].sort((a, b) => b.localeCompare(a));
     assert.deepStrictEqual(titlesDesc, sortedTitlesDesc);
-    console.log('  ✓ Sorting by title in both asc and desc order functions correctly');
+
+    const res12Category = await request('/api/resources?limit=50&sortBy=category&order=asc');
+    assert.strictEqual(res12Category.status, 200);
+    const categoriesAsc = res12Category.body.data.items.map((i) => i.category);
+    const sortedCategoriesAsc = [...categoriesAsc].sort((a, b) => a.localeCompare(b));
+    assert.deepStrictEqual(categoriesAsc, sortedCategoriesAsc);
+    console.log('  ✓ Sorting by title in both directions and category ascending works');
 
     // Test 13: Invalid sortBy rejection
     console.log('Test 13: Invalid sortBy parameter');
@@ -190,14 +202,30 @@ async function runTests() {
     assert.strictEqual(res13.body.success, false);
     console.log('  ✓ 400 returned when sortBy is invalid');
 
-    console.log('\n🎉 ALL 13 TESTS PASSED SUCCESSFULLY!\n');
+    // Test 14: Invalid and repeated sort direction input
+    console.log('Test 14: Invalid and repeated sort direction input');
+    const invalidOrder = await request('/api/resources?sortBy=title&order=sideways');
+    assert.strictEqual(invalidOrder.status, 400);
+    const repeatedOrder = await request('/api/resources?sortBy=title&order=asc&order=desc');
+    assert.strictEqual(repeatedOrder.status, 400);
+    console.log('  ✓ Invalid and repeated order values return 400');
+
+    // Test 15: Repeated sort fields and order without a sort field
+    console.log('Test 15: Repeated sort fields and order without sortBy');
+    const repeatedSort = await request('/api/resources?sortBy=title&sortBy=category');
+    assert.strictEqual(repeatedSort.status, 400);
+    const orderWithoutSort = await request('/api/resources?order=desc');
+    assert.strictEqual(orderWithoutSort.status, 400);
+    console.log('  ✓ Repeated sortBy and standalone order values return 400');
+
+    console.log('\n🎉 ALL 15 TESTS PASSED SUCCESSFULLY!\n');
   } finally {
-    server.close();
+    if (server?.listening) server.close();
   }
 }
 
 runTests().catch((err) => {
   console.error('❌ Test failed:', err);
-  if (server) server.close();
+  if (server?.listening) server.close();
   process.exit(1);
 });
